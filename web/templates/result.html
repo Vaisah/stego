@@ -1,0 +1,255 @@
+{% include 'header.html' %}
+<input id="md5" type="hidden" value="{{ md5 }}" />
+<div id="parentmain">
+  <div class="min_width">
+    <h1>{{ result.informations }}</h1>
+  </div>
+  <div class="result">
+    <div class="min_width result-flex">
+      <div id="result_main_img">
+        <img
+          id="main_img"
+          src="/static/images/load.svg"
+          class="imgscandisplay"
+        />
+      </div>
+      <div id="result_main_desc">
+        <div>
+          <span class="cmain">[+] {{ result.stats.names }}</span
+          ><span id="config_name"></span>
+        </div>
+        <div>
+          <span class="cmain">[+] {{ result.stats.size }}</span
+          ><span id="config_size"></span>
+        </div>
+        <div>
+          <span class="cmain">[+] {{ result.stats.firstupl }}</span
+          ><span id="config_date_first"></span>
+        </div>
+        <div>
+          <span class="cmain">[+] {{ result.stats.lastupl }}</span
+          ><span id="config_date_last"></span>
+        </div>
+        <div>
+          <span class="cmain">[+] {{ result.stats.uplcount }}</span
+          ><span id="config_count"></span>
+        </div>
+        <div>
+          <span class="cmain">[+] {{ result.stats.commonpwds }}</span
+          ><span id="config_pwds"></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="min_width">
+    <h1>{{ result.view }}</h1>
+  </div>
+  <div class="result">
+    <div class="min_width nofilter">
+      <!-- <div class="viewsteg">
+        <h2 class="yellow">[+] {{ result.layers.superimposed }}</h2>
+        <div>
+          <div id="rgb_load" class="loader">
+            <img src="/static/images/load.svg" />
+          </div>
+          <div>
+            <img id="img_rgb_1" class="imgscandisplay" />
+          </div>
+          
+        </div>
+        <h2 class="red">[+] {{ result.layers.red }}</h2>
+        <div>
+          <div id="r_load" class="loader">
+            <img src="/static/images/load.svg" />
+          </div>
+          <div>
+            <img id="img_r_1" class="imgscandisplay" />
+          </div>
+          
+        </div>
+        <h2 class="green">[+] {{ result.layers.green }}</h2>
+        <div>
+          <div id="g_load" class="loader">
+            <img src="/static/images/load.svg" />
+          </div>
+
+          <div><img id="img_g_1" class="imgscandisplay" /></div>
+          
+        </div>
+        <h2 class="blue">[+] {{ result.layers.blue }}</h2>
+        <div>
+          <div id="b_load" class="loader">
+            <img src="/static/images/load.svg" />
+          </div>
+          <div><img id="img_b_1" class="imgscandisplay" /></div>
+          
+        </div>
+        <h2 id="alpha" class="white">[+] {{ result.layers.alpha }}</h2>
+        <div>
+          <div id="a_load" class="loader">
+            <img src="/static/images/load.svg" />
+          </div>
+          <div><img id="img_a_1" class="imgscandisplay" /></div>
+        </div>
+      </div>-->
+
+      <div class="viewsteg view-grid">
+        <div class="view-block">
+          <h2 class="yellow">[+] {{ result.layers.superimposed }}</h2>
+          <div class="loader" id="rgb_load">
+            <img src="/static/images/load.svg" />
+          </div>
+          <img id="img_rgb_1" class="imgscandisplay" />
+        </div>
+        <div class="view-block">
+          <h2 class="red">[+] {{ result.layers.red }}</h2>
+          <div class="loader" id="r_load">
+            <img src="/static/images/load.svg" />
+          </div>
+          <img id="img_r_1" class="imgscandisplay" />
+        </div>
+        <div class="view-block">
+          <h2 class="green">[+] {{ result.layers.green }}</h2>
+          <div class="loader" id="g_load">
+            <img src="/static/images/load.svg" />
+          </div>
+          <img id="img_g_1" class="imgscandisplay" />
+        </div>
+        <div class="view-block">
+          <h2 class="blue">[+] {{ result.layers.blue }}</h2>
+          <div class="loader" id="b_load">
+            <img src="/static/images/load.svg" />
+          </div>
+          <img id="img_b_1" class="imgscandisplay" />
+        </div>
+        <div class="view-block">
+          <h2 class="white">[+] {{ result.layers.alpha }}</h2>
+          <div class="loader" id="a_load">
+            <img src="/static/images/load.svg" />
+          </div>
+          <img id="img_a_1" class="imgscandisplay" />
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="min_width">
+    <h1>Zsteg</h1>
+  </div>
+  <div class="result">
+    <div id="result_zsteg" class="min_width">
+      <div id="zsteg_load" class="loader">
+        <img src="/static/images/load.svg" />
+      </div>
+    </div>
+  </div>
+  <div id="zsteg_table_container">
+    <h3>Zsteg Data</h3>
+    <div id="zsteg_table"></div>
+  </div>
+
+  <div class="min_width">
+    <h1>Steghide</h1>
+  </div>
+  <div class="result" style="margin-bottom: 20px">
+    <div id="result_steghide" class="min_width">
+      <div id="b_load" class="loader">
+        <img src="/static/images/load.svg" />
+      </div>
+    </div>
+  </div>
+
+  <div class="min_width">
+    <button id="btn_steghide" class="btn disable">
+      {{ result.dowloadfiles }}
+    </button>
+  </div>
+  <div class="min_width">
+    <h1>Outguess</h1>
+  </div>
+  <div class="result" style="margin-bottom: 20px">
+    <div id="result_outguess" class="min_width">
+      <div id="b_load" class="loader">
+        <img src="/static/images/load.svg" />
+      </div>
+    </div>
+  </div>
+
+  <div class="min_width">
+    <button id="btn_outguess" class="btn disable">
+      {{ result.dowloadfiles }}
+    </button>
+  </div>
+  <div class="min_width">
+    <h1>ExifTool</h1>
+  </div>
+  <div class="result_table">
+    <div class="min_width">
+      <div id="result_exiftool">
+        <div id="b_load" class="loader">
+          <img src="/static/images/load.svg" />
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="min_width">
+    <h1>Binwalk</h1>
+  </div>
+  <div class="result_table">
+    <div class="min_width">
+      <div id="binwalk_table">
+        <div id="b_load" class="loader">
+          <img src="/static/images/load.svg" />
+        </div>
+      </div>
+      <br />
+      <button id="result_binwalk" class="btn disable">
+        {{ result.dowloadfiles }}
+      </button>
+    </div>
+  </div>
+
+  <div class="min_width">
+    <h1>Foremost</h1>
+  </div>
+  <div class="result_table">
+    <div class="min_width">
+      <button id="result_foremost" class="btn disable">
+        {{ result.dowloadfiles }}
+      </button>
+    </div>
+  </div>
+
+  <!--<div class="min_width">
+      <h1>Strings</h1>
+    </div>
+    <div class="result">
+      <textarea id="result_strings" class="min_width" disabled>
+      </textarea>
+    </div> -->
+
+  <div class="min_width">
+    <h1>PngCheck</h1>
+  </div>
+  <div class="result">
+    <div id="result_pngcheck" class="min_width">
+      <div id="pngcheck_load" class="loader">
+        <img src="/static/images/load.svg" />
+      </div>
+    </div>
+  </div>
+  <!--<div class="min_width">
+      <h1>PCRT</h1>
+    </div>
+    <div class="result min_width">
+      <div id="result_pcrt_raw" class="min_width" ><div id="b_load" class='loader'><img src="/static/images/load.svg" /></div></div><br/>
+      <br/>
+      <button id="result_pcrt" class="btn disable">{{ result.dowloadfiles }}</button>
+    </div>
+    -->
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+<script src="static/script_load.js"></script>
+{% include 'footer.html' %}

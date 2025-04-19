@@ -1,0 +1,53 @@
+{% include 'header.html' %}
+<div id="parentmain" class="filtercolor">
+  <div id="parenthome"><!--
+      --><div class="home_section"></div><!--
+      --><div
+      class="home_section">
+      <div id="mainform">
+       <!-- <h2 class="highlight">{{ index.what }}</h2>-->
+        <p>{{ index.description }}</p>
+        <form id="file-upload-form" class="uploader">
+          <input id="file-upload" type="file" name="file" accept="image/*" />
+          <div id="file-drag">
+            <img id="file-image" src="#" alt="Preview" class="hidden nofilter">
+            <div id="start">
+              <i class="fa fa-download" aria-hidden="true"></i>
+              <div>{{ index.selectfile }}</div>
+              <div id="notimage" class="hidden"></div>
+              <span id="file-upload-btn" class="btn btn-primary">{{
+                index.selectimage }}</span>
+            </div>
+            <div id="response" class="hidden">
+              <div id="messages"></div>
+              <progress class="progress" id="file-progress" value="0">
+                <span>0</span>%
+              </progress>
+            </div>
+          </div>
+          <button class="btn" id="upload_button" type="button">{{ index.submit
+            }}</button>
+          <div id="error" class="error"></div>
+        </form>
+      </div>
+      <div id="optionsform">
+        <div>{{ index.zsteg.extract }} <button class="btn disable"
+            id="btn_zsteg_ext" data-enable="{{ index.enable }}" data-disable="{{
+            index.disable }}">{{ index.disable }}</button></div>
+        <div>{{ index.zsteg.options }} <button class="btn disable"
+            id="btn_zsteg_all" data-enable="{{ index.enable }}" data-disable="{{
+            index.disable }}">{{ index.disable }}</button></div>
+        <div>{{ index.gotpass }} <button class="btn disable" id="btn_password"
+            data-enable="{{ index.enable }}" data-disable="{{ index.disable }}">{{
+            index.disable }}</button></div>
+        <div id="password"><input type="text" name="password" placeholder="{{
+            index.password }}..." /></div>
+      </div>
+      <div id="alias">
+      </div>
+    </div><!--
+      --></div>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+<script src="static/script_upload.js"></script>
+{% include 'footer.html' %}
