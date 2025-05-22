@@ -159,34 +159,34 @@ $(document).ready(function () {
 
 
 
-	// function load_zsteg_json() {
-	// 	$.ajax({
-	// 		url: 'static/uploads/' + md5 + '/zsteg.json?' + (new Date()).getTime(),
-	// 		success: function (zstegData) {
-	// 			let tableHtml = "<table border='1' cellpadding='5' style='border-collapse: collapse;'>";
-	// 			tableHtml += "<thead><tr><th>Bit Layer</th><th>Channel</th><th>Encryption</th><th>Dimensions</th><th>Type</th><th>Data</th></tr></thead><tbody>";
+	function load_zsteg_json() {
+		$.ajax({
+			url: 'static/uploads/' + md5 + '/zsteg.json?' + (new Date()).getTime(),
+			success: function (zstegData) {
+				let tableHtml = "<table border='1' cellpadding='5' style='border-collapse: collapse;'>";
+				tableHtml += "<thead><tr><th>Bit Layer</th><th>Channel</th><th>Encryption</th><th>Dimensions</th><th>Type</th><th>Data</th></tr></thead><tbody>";
 	
-	// 			zstegData.forEach(entry => {
-	// 				tableHtml += `<tr>
-	// 					<td>${escapeHtml(entry.layer)}</td>
-	// 					<td>${escapeHtml(entry.channel)}</td>
-	// 					<td>${escapeHtml(entry.encryption)}</td>
-	// 					<td>${escapeHtml(entry.dimensions)}</td>
-	// 					<td>${escapeHtml(entry.type)}</td>
-	// 					<td>${escapeHtml(entry.data)}</td>
-	// 				</tr>`;
-	// 			});
+				zstegData.forEach(entry => {
+					tableHtml += `<tr>
+						<td>${escapeHtml(entry.layer)}</td>
+						<td>${escapeHtml(entry.channel)}</td>
+						<td>${escapeHtml(entry.encryption)}</td>
+						<td>${escapeHtml(entry.dimensions)}</td>
+						<td>${escapeHtml(entry.type)}</td>
+						<td>${escapeHtml(entry.data)}</td>
+					</tr>`;
+				});
 	
-	// 			tableHtml += "</tbody></table>";
-	// 			$("#zsteg_table").html(tableHtml);
-	// 		},
-	// 		error: function () {
-	// 			$("#zsteg_table").html("<p>Error loading zsteg data.</p>");
-	// 		}
-	// 	});
-	// }
+				tableHtml += "</tbody></table>";
+				$("#zsteg_table").html(tableHtml);
+			},
+			error: function () {
+				$("#zsteg_table").html("<p>Error loading zsteg data.</p>");
+			}
+		});
+	}
 	
-	// load_zsteg_json(); // new function
+	load_zsteg_json(); // new function
 
 	/* Load steghide */
 
@@ -397,5 +397,4 @@ $(document).ready(function () {
 			}
 		});
 	})();
-
 });

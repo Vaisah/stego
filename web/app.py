@@ -6,6 +6,8 @@ import hashlib
 import json
 import os
 import re
+import subprocess
+from werkzeug.utils import secure_filename
 import time
 from flask import Flask, render_template, request, jsonify, \
     send_from_directory, redirect, url_for, make_response, Response
@@ -20,6 +22,8 @@ app.config['LANGUAGES'] = {
     'en': 'English',
     'fr': 'Français'
 }
+# app.secret_key = os.environ.get('FLASK_SECRET_KEY', 'dev-temp-key')
+
 mongo = PyMongo(app)
 db = mongo.db
 
@@ -294,6 +298,231 @@ def change_lang(lang=None):
 @app.route('/static/<path:path>')
 def send_js(path):
     return send_from_directory('static', path)
+import os
+import base64
+from io import BytesIO
+from flask import render_template, request, flash, redirect, url_for, send_file
+from werkzeug.utils import secure_filename
+from PIL import Image
+import piexif
+
+
+@app.route('/metadata_hide', methods=['GET', 'POST'])
+def metadata_hide():
+    if request.method == 'POST':
+        img_file = request.files.get('image')
+        payload_file = request.files.get('payload')
+        field = request.form.get('field', 'Comment')  # EXIF tag name
+
+        if not img_file or not payload_file:
+            flash("Both image and payload files are required.", "error")
+            return redirect(url_for('metadata_hide'))
+
+        # Read payload and Base64-encode
+        payload_bytes = payload_file.read()
+        b64_text = base64.b64encode(payload_bytes).decode('ascii')
+
+        # Load image into Pillow
+        img = Image.open(img_file.stream)
+
+        # Prepare or extract existing EXIF data
+        exif_dict = {}
+        if 'exif' in img.info:
+            exif_dict = piexif.load(img.info['exif'])
+        else:
+            # Initialize an empty EXIF structure
+            exif_dict = {"0th":{}, "Exif":{}, "GPS":{}, "1st":{}, "Interop":{}}
+
+        # Map form field to piexif tag
+        tag_map = {
+            'Comment': piexif.ImageIFD.ImageDescription,
+            'UserComment': piexif.ExifIFD.UserComment,
+            'ImageDescription': piexif.ImageIFD.ImageDescription
+        }
+        tag = tag_map.get(field)
+        if not tag:
+            flash(f"Unsupported field: {field}", "error")
+            return redirect(url_for('metadata_hide'))
+
+        # Insert Base64 into the chosen tag
+        if field == 'UserComment':
+            # UserComment expects a special header, but piexif handles it for us if we prefix with ASCII\0\0\0
+            exif_dict['Exif'][tag] = b'' + b64_text.encode('utf-8')
+        else:
+            exif_dict['0th'][tag] = b64_text.encode('utf-8')
+
+        # Dump back to bytes and save into an in-memory buffer
+        exif_bytes = piexif.dump(exif_dict)
+        out_buf = BytesIO()
+        img.save(out_buf, format=img.format, exif=exif_bytes)
+        out_buf.seek(0)
+
+        # Send the modified image back
+        filename = f"stego_{secure_filename(img_file.filename)}"
+        return send_file(
+            out_buf,
+            as_attachment=True,
+            download_name=filename,
+            mimetype=img_file.mimetype
+        )
+    return render_template('metadata_hide.html')
+
+
+import os
+import tempfile
+import shutil
+import subprocess
+from flask import Flask, request, render_template, flash, redirect
+from werkzeug.utils import secure_filename
+
+# Hash Algorithms and Tool Mappings
+HASHCAT_MODES = {
+    'MD5': '0',
+    'SHA1': '100',
+    'SHA256': '1400',
+    'bcrypt': '3200',
+}
+
+JOHN_FORMATS = {
+    'MD5': 'raw-md5',
+    'SHA1': 'raw-sha1',
+    'SHA256': 'raw-sha256',
+    'bcrypt': 'bcrypt',
+}
+
+# Paths to tools (verify in your Docker container)
+# JOHN_PATH = '/usr/bin/john'  # or '/usr/sbin/john'
+# HASHCAT_PATH = '/usr/bin/hashcat'
+
+def detect_hash_type(hash_sample):
+    """Detect hash type using hashid."""
+    try:
+        output = subprocess.check_output(
+            ['hashid', '-m', hash_sample],
+            stderr=subprocess.PIPE,
+            text=True
+        )
+        for line in output.splitlines():
+            for algo in HASHCAT_MODES:
+                if algo in line:
+                    return algo
+    except Exception as e:
+        flash(f"Hash detection error: {e}", "error")
+    return 'MD5'  # Default fallback
+
+@app.route('/crack_hash', methods=['GET', 'POST'])
+def crack_hash():
+    result = None
+    if request.method == 'POST':
+        temp_dir = tempfile.mkdtemp()
+        try:
+            # Handle hash input (text or file)
+            hash_text = request.form.get('hash_input', '').strip()
+            hash_file = request.files.get('hash_file')
+            hash_path = os.path.join(temp_dir, 'hash.txt')
+
+            if hash_file:
+                hash_file.save(hash_path)
+            elif hash_text:
+                with open(hash_path, 'w') as f:
+                    f.write(hash_text + '\n')
+            else:
+                flash('No hash provided!', 'error')
+                return redirect(request.url)
+
+            # Handle wordlist (upload or default)
+            wordlist_file = request.files.get('wordlist')
+            wordlist_path = '/usr/share/wordlists/rockyou.txt'  # Default
+
+            if wordlist_file and wordlist_file.filename:
+                wordlist_path = os.path.join(temp_dir, secure_filename(wordlist_file.filename))
+                wordlist_file.save(wordlist_path)
+            elif not os.path.exists(wordlist_path):
+                flash('Default wordlist not found!', 'error')
+                return redirect(request.url)
+
+            # Detect hash type
+            with open(hash_path, 'r') as f:
+                sample_hash = f.readline().strip()
+            hash_type = detect_hash_type(sample_hash)
+            john_fmt = JOHN_FORMATS.get(hash_type, 'raw-md5')
+            hashcat_mode = HASHCAT_MODES.get(hash_type, '0')
+
+            # Run John the Ripper
+            try:
+                subprocess.run(
+                    ['john', f'--format={john_fmt}', f'--wordlist={wordlist_path}', hash_path],
+                    check=True,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True
+                )
+                john_output = subprocess.check_output(
+                    ['john', '--show', hash_path],
+                    text=True
+                ).strip()
+            except subprocess.CalledProcessError as e:
+                john_output = f"John failed: {e.stderr}"
+            except Exception as e:
+                john_output = f"John error: {str(e)}"
+
+            # Run Hashcat
+            try:
+                hashcat_output = subprocess.check_output(
+                    ['hashcat', '-m', hashcat_mode, hash_path, wordlist_path, '--quiet', '--show'],
+                    text=True
+                ).strip()
+            except subprocess.CalledProcessError as e:
+                hashcat_output = f"Hashcat failed: {e.stderr}"
+            except Exception as e:
+                hashcat_output = f"Hashcat error: {str(e)}"
+
+            result = {
+                'hash_type': hash_type,
+                'john': john_output if john_output else "No results from John.",
+                'hashcat': hashcat_output if hashcat_output else "No results from Hashcat."
+            }
+
+        except Exception as e:
+            flash(f"Unexpected error: {str(e)}", "error")
+        finally:
+            shutil.rmtree(temp_dir, ignore_errors=True)  # Cleanup
+
+    return render_template('crack_hash.html', result=result)
+
+# --- Add countermeasures ---
+from flask import send_file
+import io
+
+@app.route('/countermeasures', methods=['GET', 'POST'])
+def apply_countermeasures():
+    if request.method == 'POST':
+        img_file = request.files.get('image')
+        if not img_file:
+            flash("Image file is required.", "error")
+            return redirect(url_for('apply_countermeasures'))
+
+        # Load image
+        img = Image.open(img_file.stream)
+        img = img.convert('RGB')  # Ensure consistent format
+
+        # Step 1: Strip metadata
+        img_no_meta = Image.new(img.mode, img.size)
+        img_no_meta.putdata(list(img.getdata()))
+
+        # Step 2: Recompress (resize to same size but force re-encoding)
+        buffer = io.BytesIO()
+        img_no_meta.save(buffer, format='JPEG', quality=85)
+        buffer.seek(0)
+
+        return send_file(
+            buffer,
+            as_attachment=True,
+            download_name="cleaned_image.jpg",
+            mimetype='image/jpeg'
+        )
+
+    return render_template('countermeasures.html', **load_i18n(request))
 
 
 if __name__ == '__main__':

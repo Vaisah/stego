@@ -1,22 +1,31 @@
 {% include 'header.html' %}
 <div id="parentmain" class="filtercolor">
-  <div id="parenthome"><!--
-      --><div class="home_section"></div><!--
-      --><div
-      class="home_section">
+  <div id="parenthome">
+    <!--
+      -->
+    <div class="home_section"></div>
+    <!--
+      -->
+    <div class="home_section">
       <div id="mainform">
-       <!-- <h2 class="highlight">{{ index.what }}</h2>-->
+        <!-- <h2 class="highlight">{{ index.what }}</h2>-->
         <p>{{ index.description }}</p>
         <form id="file-upload-form" class="uploader">
           <input id="file-upload" type="file" name="file" accept="image/*" />
           <div id="file-drag">
-            <img id="file-image" src="#" alt="Preview" class="hidden nofilter">
+            <img
+              id="file-image"
+              src="#"
+              alt="Preview"
+              class="hidden nofilter"
+            />
             <div id="start">
               <i class="fa fa-download" aria-hidden="true"></i>
               <div>{{ index.selectfile }}</div>
               <div id="notimage" class="hidden"></div>
-              <span id="file-upload-btn" class="btn btn-primary">{{
-                index.selectimage }}</span>
+              <span id="file-upload-btn" class="btn btn-primary"
+                >{{ index.selectimage }}</span
+              >
             </div>
             <div id="response" class="hidden">
               <div id="messages"></div>
@@ -25,28 +34,98 @@
               </progress>
             </div>
           </div>
-          <button class="btn" id="upload_button" type="button">{{ index.submit
-            }}</button>
+          <button class="btn" id="upload_button" type="button">
+            {{ index.submit }}
+          </button>
           <div id="error" class="error"></div>
         </form>
+        <!-- Folder upload form -
+        <form id="folder-upload-form" class="uploader">
+          <input
+            id="folder-upload"
+            type="file"
+            name="folder[]"
+            webkitdirectory
+            directory
+            multiple
+          />
+          <div id="folder-drag">
+            <div id="folder-start">
+              <i
+                class="fa fa-folder-open"
+                aria-hidden="true"
+                style="font-size: 3em"
+              ></i>
+              <div>Select a folder to scan</div>
+              <div id="notfolder" class="hidden"></div>
+              <span id="folder-upload-btn" class="btn btn-primary"
+                >Select Folder</span
+              >
+            </div>
+            <div id="folder-response" class="hidden">
+              <div id="folder-messages"></div>
+              <progress class="progress" id="folder-progress" value="0">
+                <span>0</span>%
+              </progress>
+            </div>
+          </div>
+          <button class="btn" id="upload_folder_button" type="button">
+            Submit Folder
+          </button>
+          <div id="folder-error" class="error"></div>
+          <div id="results_container" style="display: none"></div>
+        </form> -->
       </div>
       <div id="optionsform">
-        <div>{{ index.zsteg.extract }} <button class="btn disable"
-            id="btn_zsteg_ext" data-enable="{{ index.enable }}" data-disable="{{
-            index.disable }}">{{ index.disable }}</button></div>
-        <div>{{ index.zsteg.options }} <button class="btn disable"
-            id="btn_zsteg_all" data-enable="{{ index.enable }}" data-disable="{{
-            index.disable }}">{{ index.disable }}</button></div>
-        <div>{{ index.gotpass }} <button class="btn disable" id="btn_password"
-            data-enable="{{ index.enable }}" data-disable="{{ index.disable }}">{{
-            index.disable }}</button></div>
-        <div id="password"><input type="text" name="password" placeholder="{{
-            index.password }}..." /></div>
+        <div>
+          {{ index.zsteg.extract }}
+          <button
+            class="btn disable"
+            id="btn_zsteg_ext"
+            data-enable="{{ index.enable }}"
+            data-disable="{{
+            index.disable }}"
+          >
+            {{ index.disable }}
+          </button>
+        </div>
+        <div>
+          {{ index.zsteg.options }}
+          <button
+            class="btn disable"
+            id="btn_zsteg_all"
+            data-enable="{{ index.enable }}"
+            data-disable="{{
+            index.disable }}"
+          >
+            {{ index.disable }}
+          </button>
+        </div>
+        <div>
+          {{ index.gotpass }}
+          <button
+            class="btn disable"
+            id="btn_password"
+            data-enable="{{ index.enable }}"
+            data-disable="{{ index.disable }}"
+          >
+            {{ index.disable }}
+          </button>
+        </div>
+        <div id="password">
+          <input
+            type="text"
+            name="password"
+            placeholder="{{
+            index.password }}..."
+          />
+        </div>
       </div>
-      <div id="alias">
-      </div>
-    </div><!--
-      --></div>
+      <div id="alias"></div>
+    </div>
+    <!--
+      -->
+  </div>
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
 <script src="static/script_upload.js"></script>

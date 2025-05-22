@@ -17,7 +17,7 @@
         }
     },
     "result": {
-        "informations": "Informations",
+        "informations": "Information",
         "stats": {
             "names": "Name(s): ",
             "size": "Size: ",
@@ -67,7 +67,7 @@
             "compare": "The robustness of steganography relies on the algorithm used and the knowledge of the cover medium. A search of the original media allows us to make a comparison and identify the alterations made. A reverse search on <a href='https://images.google.com/' target='_blank' class='highlight'>Google Image</a> or <a href='https://yandex.com/images/' target='_blank' class='highlight'>Yandex Images</a> can find the original media (be sure to check that the file size and type match).",
             "stegsolve_compare": "The <a href='http://www.caesum.com/handbook/Stegsolve.jar' target='_blank' class='highlight'>Stegsolve</a> tool allows you to perform operations on 2 images, and thus identify the differences between a cover medium and a stegano medium using the XOR operation.",
             "zsteg_layer": "The <a href='https://github.com/zed-0xff/zsteg' target='_blank' class='highlight'>Zsteg</a> tool allows you to extract messages and binaries encoded on different layers, such as the 2 green LSB.",
-            "pxpython": "Sometimes, bit-layer analysis on the <a href='http://www.caesum.com/handbook/Stegsolve.jar' target='_blank' class='highlight'>Stegsolve</a> tool (or Aperi'Solve) can highlight specific areas that have been altered. Scripting may then be required to extract specific areas. The following python code retrieves an image as a list of pixels: [(100,120,43), (230, 124, 110), ...]",
+            "pxpython": "Sometimes, bit-layer analysis on the <a href='http://www.caesum.com/handbook/Stegsolve.jar' target='_blank' class='highlight'>Stegsolve</a> tool can highlight specific areas that have been altered. Scripting may then be required to extract specific areas. The following python code retrieves an image as a list of pixels: [(100,120,43), (230, 124, 110), ...]",
             "steghide": "Stegano mediums can rely on an algorithm using an encryption key. This is the case for <a href='http://steghide.sourceforge.net/' target='_blank' class='highlight'>Steghide</a> and <a href='https://github.com/resurrecting-open-source-projects/outguess' target='_blank' class='highlight'>OutGuess</a>. The password can be the name of the file, a string of characters contained in the file (<span class='highlight'>strings</span> & <span class='highlight'>exiftool</span>), or the object represented by the image. In some cases, the password cannot be retrieved and a bruteforce must be performed. The tool <a href='https://github.com/Paradoxis/StegCracker' target='_blank' class='highlight'>StegCracker</a> and <a href='https://github.com/ R4yGM/stegbrute' target='_blank' class='highlight'>Stegbrute</a> allows bruteforce of hidden secrets with <a href='http://steghide.sourceforge.net/' target='_blank' class= 'highlight'>Steghide</a>."
         },
         "h_png": "PNG (Portable Network Graphics)",

@@ -6,6 +6,7 @@ RUN apt install -y procps gcc make openssl git wget p7zip ruby ruby-etc perl rub
 #&& apk add build-base gcc musl-dev make openssl git wget jpeg-dev zlib-dev p7zip ruby ruby-etc perl \
 #&& apk add --virtual .build-dependencies ruby-dev
 
+
 #
 # Python
 #
@@ -71,15 +72,32 @@ RUN echo "**** install PngCheck ****" \
 #
 # StegExpose
 #
-RUN echo "**** install StegExpose ****" \
-    && apt install -y openjdk-17-jre \
-    && mkdir -p /opt/stegexpose \
-    && wget -O /opt/stegexpose/stegexpose.jar https://github.com/b3dk7/StegExpose/releases/download/0.2.7/StegExpose-0.2.7.jar \
-    && echo '#!/bin/bash\njava -jar /opt/stegexpose/stegexpose.jar "$@"' > /usr/local/bin/stegexpose \
-    && chmod +x /usr/local/bin/stegexpose
+# Java
+# RUN apt install -y openjdk-17-jre
+
+# # Install stegexpose script wrapper
+# COPY StegExpose.jar /opt/stegexpose/stegexpose.jar
+# RUN ln -s /opt/stegexpose/stegexpose.jar /usr/bin/stegexpose.jar \
+#     && echo -e '#!/bin/sh\nexec java -jar /usr/bin/stegexpose.jar "$@"' > /usr/bin/stegexpose \
+#     && chmod +x /usr/bin/stegexpose
+
+# John the Ripper & Hashcat
+ENV PATH="/usr/sbin:/usr/bin:${PATH}"
+RUN apt-get install -y john hashcat 
+
+
+
+
+RUN apt install hashid
+# RUN apt-get install seclists -y
+
+
+# RUN mkdir -p /usr/share/wordlists && \
+#     ln -s /usr/share/seclists/Passwords/Leaked-Databases/rockyou.txt \
+#     /usr/share/wordlists/rockyou.txt
 
 
 WORKDIR /app
 COPY . .
 RUN pip install -r requirements.txt
-CMD ./start.sh
+CMD ["./start.sh"]

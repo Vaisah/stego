@@ -14,20 +14,19 @@
 @import url(https://maxcdn.bootstrapcdn.com/font-awesome/4.5.0/css/font-awesome.min.css);
 
 :root {
-  --color-dark: #111111;
-  --color-medium: #2a2a2a;
-  --color-light: #454545;
-  --color-extra-light: rgba(177, 177, 177, 0.05);
-  --color-main: hsl(118, 88%, 20%);
-  /*  9fef00 */
-  --color-main-dark: #2e2e2e;
-  /* 1f2f23 */
-  --color-white: #ffffff;
-  --color-grey-light: #b1b1b1;
-  --color-green: rgb(30, 239, 0);
-  --color-red: rgb(255, 62, 62);
-  --color-blue: rgb(62, 177, 255);
-  --color-yellow: rgb(255, 175, 0);
+  --color-dark: #e0e0e0;
+  --color-black:#170606;
+  --color-medium: #f0f0f0;
+  --color-light: #ffffff;
+  --color-extra-light: rgba(0, 0, 0, 0.03);
+  --color-main: #3a5603;
+  --color-main-dark: #d6ffd6;
+  --color-white: #333333;
+  --color-grey-light: #555555;
+  --color-green: #3c9c0b;
+  --color-red: #ff4d4f;
+  --color-blue: #409eff;
+  --color-yellow: #e6a23c;
 }
 
 ::-moz-selection {
@@ -51,9 +50,12 @@ body {
 }
 
 body {
-  padding: 0;
+  background: var(--color-medium);
+  color: var(--color-white);
+  margin-left: 220px;
   min-height: 100vh;
-  background: #303030;
+  padding: 0;
+  font-family: 'Roboto Mono', sans-serif;
 }
 
 #copiedclipboard {
@@ -79,7 +81,7 @@ body {
   top: 10vh;
   left: -10vw;
   z-index: -100;
-  background-image: url('/static/images/wm-logo.png');
+  /* background-image: url('/static/images/wm-logo.png'); */
   background-size: contain;
   background-position: bottom left;
   background-repeat: no-repeat;
@@ -92,7 +94,7 @@ body {
   top: 10vh;
   left: -10vw;
   z-index: -1;
-  background-image: url('/static/images/background_f.png');
+  /* background-image: url('/static/images/background_f.png'); */
   background-size: contain;
   background-position: bottom left;
   background-repeat: no-repeat;
@@ -117,9 +119,8 @@ a:hover {
 }
 
 header {
-  text-align: left;
   background: var(--color-light);
-  width: 100%;
+  color: var(--color-white);
 }
 
 header div {
@@ -213,7 +214,7 @@ ul li{
   height: 100vh;
   background: var(--color-light);
   padding-top: 20px;
-  box-shadow: 2px 0 5px rgba(0,0,0,0.2);
+  box-shadow: 2px 0 8px rgba(0,0,0,0.1);
   z-index: 100;
 }
 
@@ -230,7 +231,7 @@ ul li{
 }
 
 #sidebar .menu_item a {
-  color: white;
+  color: rgb(14, 5, 5);
   display: flex;
   align-items: center;
 }
@@ -265,12 +266,65 @@ body {
 #mainform,
 #optionsform {
   background: var(--color-light);
+  box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+  color: var(--color-white);
+}
+/* Uploader doldr */
+#folder-upload-form {
+  background: var(--color-dark);
   border-radius: 5px;
-  box-shadow: rgba(0, 0, 0, 0.2) 0px 0px 0px 0px, rgba(0, 0, 0, 0.14) 0px 0px 0px 0px, rgba(0, 0, 0, 0.12) 0px 0px 0px 0px;
-  box-sizing: border-box;
   padding: 24px 48px;
-  margin-bottom: 15px;
-  margin-top: 30px;
+  margin: 30px 0 15px 0;
+  box-shadow: rgba(65, 64, 64, 0.2) 0px 2px 5px;
+  box-sizing: border-box;
+}
+
+#folder-drag i.fa-folder-open {
+  font-size: 48px;
+  color: var(--color-main);
+  margin-bottom: 10px;
+}
+
+#folder-drag div {
+  font-size: 16px;
+  margin-bottom: 10px;
+  
+  color: var(--color-grey-light);
+}
+
+#folder-upload-btn {
+  width: auto;
+  padding: 10px 20px;
+  font-size: 12px;
+  background: var(--color-main);
+  color: var(--color-dark);
+  border-radius: .2rem;
+  cursor: pointer;
+  /* transition: background 0.2s ease-in-out; */
+}
+
+#folder-upload-btn:hover {
+  background: var(--color-green);
+}
+
+#upload_folder_button {
+  margin-top: 20px;
+  background: var(--color-main);
+  color: var(--color-dark);
+  border-radius: .2rem;
+  padding: 12px 20px;
+  font-weight: bold;
+  /* transition: background 0.2s ease-in-out; */
+}
+
+#upload_folder_button:hover {
+  background: var(--color-green);
+}
+
+#folder-error {
+  color: var(--color-red);
+  margin-top: 15px;
+  font-weight: bold;
 }
 
 /* Uploader */
@@ -416,7 +470,7 @@ body {
   border-radius: .2rem;
   outline: none;
   padding: 0 1rem;
-  color: var(--color-dark);
+  color: var(--color-black);
   -webkit-transition: all 0.2s ease-in-out;
   transition: all 0.2s ease-in-out;
   box-sizing: border-box;

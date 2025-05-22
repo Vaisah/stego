@@ -12,4 +12,5 @@ def cmd(cmd, shell=True):
         stdout=PIPE,
         shell=shell
     )
+    
     return process.communicate()[0].decode("ISO-8859-1")

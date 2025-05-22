@@ -1,33 +1,52 @@
 <!DOCTYPE html>
 <html>
-    <head>
-        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
-        <meta charset="utf-8">
-        <meta name="description" content="">
-        <meta name="viewport" content="width=device-width, initial-scale=1">
-        <title>Stego Analyzer</title>
-        <!-- Meta -->
-        <meta name="Content-Language" content="{{ lang }}">
-        <meta name="Keywords" content="StegoAnalyzer, Stego Analyzer, vaisah, xander">
-        <meta name="Author" content="Xander">
-        <meta name="Robots" content="all">
-        <meta name="theme-color" content="#42f4c5">
-        <link rel="icon" type="image/svg+xml" href="/static/images/wm-logo.png" />
-        <link rel="preconnect" href="https://fonts.gstatic.com">
-        <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@300;400;600;700&display=swap" rel="stylesheet">
-        <link href="static/normalize.css" rel="stylesheet">
-        <link href="static/style.css" rel="stylesheet">
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/particles.js/2.0.0/particles.min.js"></script>
-    </head>
-    <body>
-        <div id="copiedclipboard">{{ clipboard }}</div>
-        <aside id="sidebar">
-            <div class="menu_item logo"><a href="/"><img src="/static/images/wm-logo.png"/>Stego Analyzer</a></div>
-            <div class="menu_item"><a href="/cheatsheet">Cheat Sheet</a></div>
-        
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <meta charset="utf-8" />
+    <meta name="description" content="" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Stego Analyzer</title>
+    <!-- Meta -->
+    <meta name="Content-Language" content="{{ lang }}" />
+    <meta
+      name="Keywords"
+      content="StegoAnalyzer, Stego Analyzer, vaisah, xander"
+    />
+    <meta name="Author" content="Xander" />
+    <meta name="Robots" content="all" />
+    <meta name="theme-color" content="#42f4c5" />
+    <link rel="icon" type="image/svg+xml" href="/static/images/wm-logo.png" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@300;400;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link href="static/normalize.css" rel="stylesheet" />
+    <link href="static/style.css" rel="stylesheet" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/particles.js/2.0.0/particles.min.js"></script>
+  </head>
+  <body>
+    <div id="copiedclipboard">{{ clipboard }}</div>
+    <aside id="sidebar">
+      <div class="menu_item logo">
+        <a href="/"><img src="/static/images/wm-logo.png" />Stego Analyzer</a>
+      </div>
+      <div class="menu_item"><a href="/cheatsheet">Cheat Sheet</a></div>
+      <!--
             <div id="menulang">
                 <a href="/lang/fr"><div {% if lang == "fr" %}class="active" {% endif %}style="background-image: url('/static/images/flags/fr.svg');"></div></a>
                 <a href="/lang/en"><div {% if lang == "en" %}class="active" {% endif %}style="background-image: url('/static/images/flags/en.svg');"></div></a>
             </div>
-        </aside>
-        
+            -->
+      <!-- add somewhere in your navbar -->
+      <div class="menu_item">
+        <a href="{{ url_for('crack_hash') }}">Hash Cracker</a>
+      </div>
+      <div class="menu_item">
+        <a href="{{ url_for('apply_countermeasures') }}"
+          >Apply Countermeasures
+        </a>
+      </div>
+    </aside>
+  </body>
+</html>

@@ -1,0 +1,113 @@
+{% include 'header.html' %}
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Image Countermeasures</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="stylesheet" href="/static/style.css" />
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+        font-family: "Roboto Mono", monospace;
+        background-color: #f5f5f5;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+      }
+
+      .counter-container {
+        background: #ffffff;
+        padding: 30px 40px;
+        border-radius: 12px;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+        width: 100%;
+        max-width: 500px;
+        text-align: center;
+      }
+
+      h2 {
+        margin-bottom: 10px;
+        font-size: 24px;
+      }
+
+      p {
+        font-size: 14px;
+        color: #666;
+        margin-bottom: 25px;
+      }
+
+      label {
+        display: block;
+        margin-bottom: 8px;
+        text-align: left;
+        font-weight: 500;
+      }
+
+      input[type="file"] {
+        width: 100%;
+        padding: 8px;
+        border: 1px solid #ccc;
+        border-radius: 6px;
+        margin-bottom: 20px;
+        font-family: inherit;
+      }
+
+      button {
+        padding: 10px;
+        width: 100%;
+        border: none;
+        border-radius: 6px;
+        background-color: rgb(6, 151, 112);
+        color: #000;
+        font-weight: bold;
+        cursor: pointer;
+        transition: background-color 0.3s;
+      }
+
+      button:hover {
+        background-color: rgb(5, 61, 45);
+      }
+
+      .alert {
+        padding: 10px;
+        margin-bottom: 15px;
+        border-radius: 4px;
+        font-size: 14px;
+      }
+
+      .alert-success {
+        background-color: #d4edda;
+        color: #155724;
+      }
+
+      .alert-error {
+        background-color: #f8d7da;
+        color: #721c24;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="counter-container">
+      <h2>Apply Image Countermeasures</h2>
+      <p>
+        Upload an image to strip metadata and re-encode it for steganographic
+        countermeasures.
+      </p>
+
+      {% with messages = get_flashed_messages(with_categories=true) %} {% if
+      messages %} {% for category, message in messages %}
+      <div class="alert alert-{{ category }}">{{ message }}</div>
+      {% endfor %} {% endif %} {% endwith %}
+
+      <form method="POST" enctype="multipart/form-data">
+        <label for="image">Select Image</label>
+        <input type="file" id="image" name="image" accept="image/*" required />
+        <button type="submit">Clean Image</button>
+      </form>
+    </div>
+  </body>
+</html>

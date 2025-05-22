@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Hash Cracker</title>
+    <style>
+      body {
+        font-family: sans-serif;
+        background-color: #f5f5f5;
+        padding: 20px;
+      }
+      .container {
+        background: white;
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+      }
+      .form-group {
+        margin-bottom: 15px;
+      }
+      label {
+        display: block;
+        margin-bottom: 5px;
+        font-weight: bold;
+      }
+      textarea,
+      input[type="file"],
+      button {
+        width: 100%;
+        padding: 8px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+      }
+      button {
+        background: #007bff;
+        color: white;
+        border: none;
+        cursor: pointer;
+        padding: 10px;
+        font-size: 16px;
+      }
+      button:hover {
+        background: #0056b3;
+      }
+      pre {
+        background: #f8f9fa;
+        padding: 10px;
+        border-radius: 4px;
+        overflow-x: auto;
+      }
+      .error {
+        color: red;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>Hash Cracker</h1>
+      {% with messages = get_flashed_messages(with_categories=true) %} {% if
+      messages %} {% for category, message in messages %}
+      <div class="error">{{ message }}</div>
+      {% endfor %} {% endif %} {% endwith %}
+
+      <form method="post" enctype="multipart/form-data">
+        <div class="form-group">
+          <label for="hash_input">Paste Hash:</label>
+          <textarea
+            name="hash_input"
+            rows="3"
+            placeholder="e.g., 5f4dcc3b5aa765d61d8327deb882cf99 (MD5)"
+          ></textarea>
+        </div>
+        <div class="form-group">
+          <label for="hash_file">Or Upload Hash File:</label>
+          <input type="file" name="hash_file" accept=".txt" />
+        </div>
+        <div class="form-group">
+          <label for="wordlist">Upload Wordlist (optional):</label>
+          <input type="file" name="wordlist" accept=".txt" />
+          <small>Default: /usr/share/wordlists/rockyou.txt</small>
+        </div>
+        <button type="submit">Crack Hash</button>
+      </form>
+
+      {% if result %}
+      <h2>Results ({{ result.hash_type }})</h2>
+      <div class="form-group">
+        <h3>John the Ripper</h3>
+        <pre>{{ result.john }}</pre>
+      </div>
+      <div class="form-group">
+        <h3>Hashcat</h3>
+        <pre>{{ result.hashcat }}</pre>
+      </div>
+      {% endif %}
+    </div>
+  </body>
+</html>

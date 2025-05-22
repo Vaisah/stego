@@ -44,6 +44,8 @@ services:
     volumes:
       - stego-db:/data/db
       - ./mongo/mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+      - ./static/uploads:/uploads
+
     networks:
       - backend
 

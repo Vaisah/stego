@@ -1,5 +1,4 @@
 // File Upload
-// 
 $("#file-drag").click(function () {
   $("#file-upload").click();
 });
@@ -191,3 +190,62 @@ $("#upload_button").click(function () {
 $("#btn_password").click(function () {
   $("#password").slideToggle();
 });
+
+$("#upload_folder_button").click(function () {
+  const files = $("#folder-upload").prop("files");
+  if (files.length > 0) {
+    uploadFolder(files);
+  } else {
+    alert("Please select a folder.");
+  }
+});
+
+function uploadFolder(files) {
+  const xhr = new XMLHttpRequest();
+  const formData = new FormData();
+
+  // Append each file with the correct relative path
+  for (let i = 0; i < files.length; i++) {
+    formData.append("folder[]", files[i], files[i].webkitRelativePath || files[i].name);
+  }
+
+  // Additional form data based on button states
+  formData.append("zsteg_ext", !$("#btn_zsteg_ext").hasClass("disable"));
+  formData.append("zsteg_all", !$("#btn_zsteg_all").hasClass("disable"));
+  formData.append("use_password", !$("#btn_password").hasClass("disable"));
+  formData.append("password", $("input[name=password]").val());
+
+  xhr.open("POST", "/upload_folder", true);
+
+  xhr.onreadystatechange = function () {
+    if (xhr.readyState == 4) {
+      if (xhr.status == 200) {
+        try {
+          const response = JSON.parse(xhr.responseText);
+          if (response.redirect) {
+            window.location.href = response.redirect;
+          } else {
+            let resultsHTML = `<p>Total images processed: ${response.image_count}</p>`;
+            resultsHTML += `<p>Images with possible steganography: ${response.suspected_count}</p>`;
+            if (response.suspected_images.length > 0) {
+              resultsHTML += "<ul>";
+              response.suspected_images.forEach(filename => {
+                resultsHTML += `<li>${filename}</li>`;
+              });
+              resultsHTML += "</ul>";
+            } else {
+              resultsHTML += "<p>No suspicious images found.</p>";
+            }
+            $("#results_container").html(resultsHTML);
+            $("#results_container").show();
+          }
+        } catch (e) {
+          $("#folder-error").text("Error parsing server response: " + e.message);
+        }
+      } else {
+        $("#folder-error").text("Error uploading folder. Status: " + xhr.status);
+      }
+    }
+  };
+  xhr.send(formData);
+}
