@@ -144,10 +144,74 @@
       </div>
     </div>
   </div>
-  <div id="zsteg_table_container">
-    <h3>Zsteg Data</h3>
-    <div id="zsteg_table"></div>
-  </div>
+  <div id="result_zsteg" class="min_width"></div>
+  <div
+    id="hidden_zsteg_msg"
+    class="min_width"
+    style="margin-top: 10px; font-weight: bold; color: green"
+  ></div>
+
+  <table
+    border="1"
+    cellpadding="4"
+    cellspacing="0"
+    style="
+      border-collapse: collapse;
+      width: 100%;
+      font-family: Arial, sans-serif;
+    "
+  >
+    <thead style="background-color: #f2f2f2">
+      <tr>
+        <th style="text-align: left">Term</th>
+        <th style="text-align: left">Meaning</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>b1, b2, b4</strong></td>
+        <td>
+          Bit layers — refer to the specific bits (usually least significant
+          bits) used to embed hidden data.
+        </td>
+      </tr>
+      <tr>
+        <td><strong>r / g / b / rgba</strong></td>
+        <td>
+          Color channels — Red, Green, Blue, and Alpha (transparency) used in
+          image encoding. Data may be hidden in specific channels.
+        </td>
+      </tr>
+      <tr>
+        <td><strong>lsb / msb</strong></td>
+        <td>
+          Least Significant Bit / Most Significant Bit — type of steganographic
+          embedding that hides data in the lowest or highest bits of pixel data.
+        </td>
+      </tr>
+      <tr>
+        <td><strong>meta</strong></td>
+        <td>
+          Metadata — refers to image metadata fields (like EXIF tags) where
+          messages can be hidden.
+        </td>
+      </tr>
+      <tr>
+        <td><strong>text</strong></td>
+        <td>
+          Human-readable output — indicates a hidden message was found as
+          plaintext.
+        </td>
+      </tr>
+      <tr>
+        <td><strong>file</strong></td>
+        <td>
+          Binary file signature — indicates a recognizable file format (e.g.,
+          ZIP, PNG) embedded within the image.
+        </td>
+      </tr>
+    </tbody>
+  </table>
 
   <div class="min_width">
     <h1>Steghide</h1>
@@ -159,6 +223,13 @@
       </div>
     </div>
   </div>
+
+  <div id="result_steghide" class="min_width"></div>
+  <div
+    id="hidden_steghide_msg"
+    class="min_width"
+    style="margin-top: 10px; font-weight: bold; color: green"
+  ></div>
 
   <div class="min_width">
     <button id="btn_steghide" class="btn disable">

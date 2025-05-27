@@ -1,0 +1,130 @@
+{% include 'header.html' %}
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Image Integrity Checker</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        background-color: #f9f9f9;
+        margin: 0;
+        padding: 0;
+      }
+
+      #layout {
+        display: flex;
+      }
+
+      #main-content {
+        flex: 1;
+        display: flex;
+        justify-content: center;
+        padding: 40px;
+        box-sizing: border-box;
+      }
+
+      .content-wrapper {
+        max-width: 600px;
+        width: 100%;
+      }
+
+      h2 {
+        color: #333;
+      }
+
+      .form-group {
+        margin-bottom: 20px;
+      }
+
+      input[type="file"] {
+        display: block;
+        margin-top: 5px;
+      }
+
+      button {
+        padding: 10px 20px;
+        background-color: #007acc;
+        color: white;
+        border: none;
+        cursor: pointer;
+      }
+
+      button:hover {
+        background-color: #005c99;
+      }
+
+      .preview-img {
+        max-width: 90px;
+        margin-top: 10px;
+        border: 1px solid #ccc;
+        padding: 5px;
+        background: white;
+      }
+
+      .results {
+        margin-top: 30px;
+        padding: 15px;
+        background: #fff;
+        border: 1px solid #ccc;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="layout">
+      <div id="main-content">
+        <div class="content-wrapper">
+          <h2>🖼️ Image Integrity Checker</h2>
+          <form method="post" enctype="multipart/form-data">
+            <div class="form-group">
+              <label>Original Image:</label>
+              <input
+                type="file"
+                name="original"
+                accept="image/*"
+                onchange="loadPreview(this, 'previewOriginal')"
+                required
+              />
+              <img id="previewOriginal" class="preview-img" />
+            </div>
+            <div class="form-group">
+              <label>Cleaned Image:</label>
+              <input
+                type="file"
+                name="cleaned"
+                accept="image/*"
+                onchange="loadPreview(this, 'previewCleaned')"
+                required
+              />
+              <img id="previewCleaned" class="preview-img" />
+            </div>
+            <button type="submit">Compare Images</button>
+          </form>
+
+          {% if result %}
+          <div class="results">
+            <h3>🔍 Result</h3>
+            <p>
+              <strong>Visual Match:</strong> {{ '✅ Yes' if result['match'] else
+              '❌ No' }}
+            </p>
+            <p><strong>Integrity:</strong> {{ result['integrity'] }}%</p>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <script>
+      function loadPreview(input, targetId) {
+        const preview = document.getElementById(targetId);
+        if (input.files && input.files[0]) {
+          const reader = new FileReader();
+          reader.onload = function (e) {
+            preview.src = e.target.result;
+          };
+          reader.readAsDataURL(input.files[0]);
+        }
+      }
+    </script>
+  </body>
+</html>

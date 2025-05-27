@@ -138,77 +138,66 @@ $(document).ready(function () {
 	/* Load zsteg */
 
 	(function load_zsteg() {
-		$.ajax({
-			url: '/stats/' + md5 + '?' + (new Date()).getTime(), success: function (data) {
-				if (data["status"]["zsteg"] == "finished") {
-					$("#btn_zsteg").removeClass("disable");
-					$("#btn_zsteg").click(function () {
-						window.location.href = 'static/uploads/' + md5 + '/zsteg.7z';
-					});
-					$.ajax({
-						url: 'static/uploads/' + md5 + '/zsteg.txt?' + (new Date()).getTime(), success: function (data) {
-							$("#result_zsteg").html(fmZsteg(formatCmd(escapeHtml(data))));
-						}
-					});
-				} else {
-					setTimeout(load_zsteg, 5000);
-				}
-			}
-		});
-	})();
-
-
-
-	function load_zsteg_json() {
-		$.ajax({
-			url: 'static/uploads/' + md5 + '/zsteg.json?' + (new Date()).getTime(),
-			success: function (zstegData) {
-				let tableHtml = "<table border='1' cellpadding='5' style='border-collapse: collapse;'>";
-				tableHtml += "<thead><tr><th>Bit Layer</th><th>Channel</th><th>Encryption</th><th>Dimensions</th><th>Type</th><th>Data</th></tr></thead><tbody>";
-	
-				zstegData.forEach(entry => {
-					tableHtml += `<tr>
-						<td>${escapeHtml(entry.layer)}</td>
-						<td>${escapeHtml(entry.channel)}</td>
-						<td>${escapeHtml(entry.encryption)}</td>
-						<td>${escapeHtml(entry.dimensions)}</td>
-						<td>${escapeHtml(entry.type)}</td>
-						<td>${escapeHtml(entry.data)}</td>
-					</tr>`;
+	$.ajax({
+		url: '/stats/' + md5 + '?' + (new Date()).getTime(),
+		success: function (data) {
+			if (data["status"]["zsteg"] == "finished") {
+				$("#btn_zsteg").removeClass("disable");
+				$("#btn_zsteg").click(function () {
+					window.location.href = 'static/uploads/' + md5 + '/zsteg.7z';
 				});
-	
-				tableHtml += "</tbody></table>";
-				$("#zsteg_table").html(tableHtml);
-			},
-			error: function () {
-				$("#zsteg_table").html("<p>Error loading zsteg data.</p>");
+				$.ajax({
+					url: 'static/uploads/' + md5 + '/zsteg.txt?' + (new Date()).getTime(),
+					success: function (data) {
+						const htmlFormatted = fmZsteg(formatCmd(escapeHtml(data)));
+						$("#result_zsteg").html(htmlFormatted);
+
+						// Extract text payload
+						const match = data.match(/text:\s*["']?([^"\n']{6,}[^"\n'])["']?/i);
+						if (match && match[1]) {
+							$("#hidden_zsteg_msg").text("🔍 Hidden message found by Zsteg: " + match[1]);
+						}
+					}
+				});
+			} else {
+				setTimeout(load_zsteg, 5000);
 			}
-		});
-	}
-	
-	load_zsteg_json(); // new function
+		}
+	});
+})();
 
 	/* Load steghide */
 
 	(function load_steghide() {
-		$.ajax({
-			url: '/stats/' + md5 + '?' + (new Date()).getTime(), success: function (data) {
-				if (data["status"]["steghide"] == "finished") {
-					$("#btn_steghide").removeClass("disable");
-					$("#btn_steghide").click(function () {
-						window.location.href = 'static/uploads/' + md5 + '/steghide.7z';
-					});
-					$.ajax({
-						url: 'static/uploads/' + md5 + '/steghide.txt', success: function (data) {
-							$("#result_steghide").html(formatCmd(escapeHtml(data)));
+	$.ajax({
+		url: '/stats/' + md5 + '?' + (new Date()).getTime(),
+		success: function (data) {
+			if (data["status"]["steghide"] == "finished") {
+				$("#btn_steghide").removeClass("disable");
+				$("#btn_steghide").click(function () {
+					window.location.href = 'static/uploads/' + md5 + '/steghide.7z';
+				});
+				$.ajax({
+					url: 'static/uploads/' + md5 + '/steghide.txt',
+					success: function (data) {
+						const formatted = formatCmd(escapeHtml(data));
+						$("#result_steghide").html(formatted);
+
+						// Extract probable hidden message
+						const lines = data.split('\n');
+						const likelyText = lines.find(line => line.trim().length > 10 && !line.startsWith("wrote") && !line.includes("file"));
+						if (likelyText) {
+							$("#hidden_steghide_msg").text("🔍 Hidden message found by Steghide: " + likelyText.trim());
 						}
-					});
-				} else {
-					setTimeout(load_steghide, 5000);
-				}
+					}
+				});
+			} else {
+				setTimeout(load_steghide, 5000);
 			}
-		});
-	})();
+		}
+	});
+})();
+
 
 	/* Load outguess */
 

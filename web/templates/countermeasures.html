@@ -61,7 +61,7 @@
         width: 100%;
         border: none;
         border-radius: 6px;
-        background-color: rgb(6, 151, 112);
+        background-color: rgba(6, 97, 73, 0.7);
         color: #000;
         font-weight: bold;
         cursor: pointer;
@@ -105,9 +105,43 @@
 
       <form method="POST" enctype="multipart/form-data">
         <label for="image">Select Image</label>
-        <input type="file" id="image" name="image" accept="image/*" required />
+        <input
+          type="file"
+          id="image"
+          name="image"
+          accept="image/*"
+          onchange="loadPreview(this)"
+          required
+        />
+        <img
+          id="preview"
+          style="
+            display: none;
+            width: 280px;
+            height: 180px;
+            object-fit: contain;
+            margin-top: 10px;
+            border: 1px solid #ccc;
+            padding: 5px;
+            background: white;
+          "
+        />
+
         <button type="submit">Clean Image</button>
       </form>
     </div>
+    <script>
+      function loadPreview(input) {
+        const preview = document.getElementById("preview");
+        if (input.files && input.files[0]) {
+          const reader = new FileReader();
+          reader.onload = function (e) {
+            preview.src = e.target.result;
+            preview.style.display = "block";
+          };
+          reader.readAsDataURL(input.files[0]);
+        }
+      }
+    </script>
   </body>
 </html>

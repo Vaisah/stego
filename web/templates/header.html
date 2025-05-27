@@ -38,14 +38,18 @@
                 <a href="/lang/en"><div {% if lang == "en" %}class="active" {% endif %}style="background-image: url('/static/images/flags/en.svg');"></div></a>
             </div>
             -->
-      <!-- add somewhere in your navbar -->
+      <!-- add somewhere in your navbar 
       <div class="menu_item">
         <a href="{{ url_for('crack_hash') }}">Hash Cracker</a>
-      </div>
+      </div>-->
       <div class="menu_item">
-        <a href="{{ url_for('apply_countermeasures') }}"
-          >Apply Countermeasures
-        </a>
+        <a href="{{ url_for('apply_countermeasures') }}">Countermeasure</a>
+      </div>
+      <!--div class="menu_item">
+        <a href="{{ url_for('crypto_tool') }}">Encryption </a>
+      </div-->
+      <div class="menu_item">
+        <a href="{{ url_for('check_integrity') }}">Image Integrity</a>
       </div>
     </aside>
   </body>

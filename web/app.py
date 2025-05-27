@@ -15,14 +15,13 @@ from flask_pymongo import PyMongo
 from bson.objectid import ObjectId
 
 app = Flask(__name__)
-app = Flask(__name__)
 app.config["MONGO_URI"] = "mongodb://xander:xander21@mongodb:27017/flaskdb?authSource=admin"
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16 Mb max
 app.config['LANGUAGES'] = {
     'en': 'English',
     'fr': 'Français'
 }
-# app.secret_key = os.environ.get('FLASK_SECRET_KEY', 'dev-temp-key')
+
 
 mongo = PyMongo(app)
 db = mongo.db
@@ -491,8 +490,23 @@ def crack_hash():
     return render_template('crack_hash.html', result=result)
 
 # --- Add countermeasures ---
-from flask import send_file
-import io
+from PIL import Image
+import os, io, tempfile, subprocess
+from flask import request, flash, redirect, url_for, send_file, render_template
+from werkzeug.utils import secure_filename
+
+def clear_lsb(img):
+    """Zero out the LSBs of all channels (simple LSB scrubbing)."""
+    if img.mode != 'RGB':
+        img = img.convert('RGB')
+    pixels = list(img.getdata())
+    new_pixels = []
+    for pixel in pixels:
+        new_pixel = tuple((channel & ~1) for channel in pixel)
+        new_pixels.append(new_pixel)
+    cleaned = Image.new('RGB', img.size)
+    cleaned.putdata(new_pixels)
+    return cleaned
 
 @app.route('/countermeasures', methods=['GET', 'POST'])
 def apply_countermeasures():
@@ -502,27 +516,207 @@ def apply_countermeasures():
             flash("Image file is required.", "error")
             return redirect(url_for('apply_countermeasures'))
 
-        # Load image
-        img = Image.open(img_file.stream)
-        img = img.convert('RGB')  # Ensure consistent format
+        original_filename = secure_filename(img_file.filename)
+        name, ext = os.path.splitext(original_filename)
+        ext = ext.lower().lstrip('.')
 
-        # Step 1: Strip metadata
-        img_no_meta = Image.new(img.mode, img.size)
-        img_no_meta.putdata(list(img.getdata()))
+        format_map = {
+            'jpg': ('JPEG', 'image/jpeg'),
+            'jpeg': ('JPEG', 'image/jpeg'),
+            'png': ('PNG', 'image/png')
+        }
 
-        # Step 2: Recompress (resize to same size but force re-encoding)
+        if ext not in format_map:
+            flash("Unsupported image format. Only PNG and JPG are supported.", "error")
+            return redirect(url_for('apply_countermeasures'))
+
+        img_format, mimetype = format_map[ext]
+
+        # Save temporarily
+        temp_dir = tempfile.mkdtemp()
+        temp_path = os.path.join(temp_dir, original_filename)
+        img_file.save(temp_path)
+
+        # Attempt to extract with zsteg (just to trigger detection/logs)
+        if ext in ['png', 'bmp']:
+            try:
+                subprocess.run(['zsteg', temp_path, '--all'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            except:
+                pass
+
+        # Attempt to extract with steghide (passwordless)
+        try:
+            subprocess.run(['steghide', 'extract', '-sf', temp_path, '-p', '', '-xf', os.path.join(temp_dir, 'extracted.txt')],
+                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        except:
+            pass
+
+        # Strip metadata + LSBs
+        img = Image.open(temp_path).convert('RGB')
+        img_cleaned = clear_lsb(img)
+
         buffer = io.BytesIO()
-        img_no_meta.save(buffer, format='JPEG', quality=85)
+        img_cleaned.save(buffer, format=img_format, quality=85)
         buffer.seek(0)
 
+        cleaned_filename = f"{name}-cleaned.{ext}"
         return send_file(
             buffer,
             as_attachment=True,
-            download_name="cleaned_image.jpg",
-            mimetype='image/jpeg'
+            download_name=cleaned_filename,
+            mimetype=mimetype
         )
 
     return render_template('countermeasures.html', **load_i18n(request))
+
+# Add these imports at the top
+from cryptography.fernet import Fernet
+import hashlib, base64, os, struct
+
+@app.route('/crypto')
+def crypto_tool():
+    return render_template('crypto.html', **load_i18n(request))
+
+@app.route('/encrypt', methods=['POST'])
+def encrypt_file():
+    if 'file' not in request.files:
+        return jsonify({"error": "No file provided"}), 400
+    
+    file = request.files['file']
+    key = request.form.get('key', '').strip()
+    use_random_key = request.form.get('use_random_key') == 'true'
+    
+    if use_random_key:
+        key = Fernet.generate_key().decode()
+    elif not key:
+        return jsonify({"error": "No key provided"}), 400
+    
+    # Process the key like in EasyEnc.py
+    _key = hashlib.md5(key.encode()).hexdigest()
+    _key = base64.urlsafe_b64encode(_key.encode())
+    
+    # Save the file temporarily
+    temp_dir = tempfile.mkdtemp()
+    original_path = os.path.join(temp_dir, secure_filename(file.filename))
+    encrypted_path = original_path + "_ENCRYPTED"
+    file.save(original_path)
+    
+    try:
+        # Encrypt the file
+        fernet = Fernet(_key)
+        with open(original_path, "rb") as f_in, open(encrypted_path, "wb") as f_out:
+            while True:
+                chunk = f_in.read(4096)
+                if not chunk:
+                    break
+                encrypted_chunk = fernet.encrypt(chunk)
+                f_out.write(struct.pack("<I", len(encrypted_chunk)))
+                f_out.write(encrypted_chunk)
+        
+        # Return the encrypted file
+        return send_file(
+            encrypted_path,
+            as_attachment=True,
+            download_name=file.filename + "_ENCRYPTED",
+            mimetype='application/octet-stream'
+        )
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    finally:
+        # Clean up
+        shutil.rmtree(temp_dir, ignore_errors=True)
+
+@app.route('/decrypt', methods=['POST'])
+def decrypt_file():
+    if 'file' not in request.files:
+        return jsonify({"error": "No file provided"}), 400
+    
+    file = request.files['file']
+    key = request.form.get('key', '').strip()
+    
+    if not key:
+        return jsonify({"error": "No key provided"}), 400
+    
+    # Process the key like in EasyEnc.py
+    _key = hashlib.md5(key.encode()).hexdigest()
+    _key = base64.urlsafe_b64encode(_key.encode())
+    
+    # Save the file temporarily
+    temp_dir = tempfile.mkdtemp()
+    encrypted_path = os.path.join(temp_dir, secure_filename(file.filename))
+    decrypted_path = encrypted_path.replace("_ENCRYPTED", "_DECRYPTED")
+    file.save(encrypted_path)
+    
+    try:
+        # Decrypt the file
+        fernet = Fernet(_key)
+        with open(encrypted_path, "rb") as f_in, open(decrypted_path, "wb") as f_out:
+            while True:
+                data_size = f_in.read(4)
+                if len(data_size) == 0:
+                    break
+                encrypted_chunk = f_in.read(struct.unpack("<I", data_size)[0])
+                try:
+                    decrypted_chunk = fernet.decrypt(encrypted_chunk)
+                    f_out.write(decrypted_chunk)
+                except:
+                    return jsonify({"error": "Decryption failed - wrong key?"}), 400
+        
+        # Return the decrypted file
+        return send_file(
+            decrypted_path,
+            as_attachment=True,
+            download_name=file.filename.replace("_ENCRYPTED", "_DECRYPTED"),
+            mimetype='application/octet-stream'
+        )
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    finally:
+        # Clean up
+        shutil.rmtree(temp_dir, ignore_errors=True)
+        
+@app.route('/random_key')
+def random_key():
+    key = Fernet.generate_key().decode()
+    return jsonify({"key": key})
+
+
+from flask import Flask, request, render_template_string
+from PIL import Image, ImageChops
+import os
+from werkzeug.utils import secure_filename
+
+app.config['UPLOAD_FOLDER'] = '/tmp'
+@app.route('/check_integrity', methods=['GET', 'POST'])
+def check_integrity():
+    result = None
+    if request.method == 'POST':
+        orig_file = request.files['original']
+        clean_file = request.files['cleaned']
+
+        orig_path = os.path.join(app.config['UPLOAD_FOLDER'], secure_filename(orig_file.filename))
+        clean_path = os.path.join(app.config['UPLOAD_FOLDER'], secure_filename(clean_file.filename))
+
+        orig_file.save(orig_path)
+        clean_file.save(clean_path)
+
+        img1 = Image.open(orig_path).convert("RGB")
+        img2 = Image.open(clean_path).convert("RGB")
+
+        if img1.size != img2.size:
+            result = {"match": False, "integrity": 0}
+        else:
+            diff = ImageChops.difference(img1, img2)
+            pixels = img1.size[0] * img1.size[1]
+            diff_pixels = sum(diff.convert("L").point(lambda x: 1 if x > 0 else 0).getdata())
+            similarity = max(0, 100 - (diff_pixels / pixels * 100))
+            result = {
+                "match": diff_pixels == 0,
+                "integrity": round(similarity, 2)
+            }
+
+    return render_template('check_integrity.html', result=result)
+
 
 
 if __name__ == '__main__':
