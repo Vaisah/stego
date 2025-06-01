@@ -22,7 +22,6 @@ app.config['LANGUAGES'] = {
     'fr': 'Français'
 }
 
-
 mongo = PyMongo(app)
 db = mongo.db
 

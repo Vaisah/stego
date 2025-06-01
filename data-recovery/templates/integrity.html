@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Folder Integrity Checker</title>
+  </head>
+  <body style="font-family: Arial; padding: 40px; background-color: #f9f9f9">
+    <h2>Folder Integrity Checker (MD5)</h2>
+    <form method="POST" enctype="multipart/form-data">
+      <label>Original Folder:</label><br />
+      <input
+        type="file"
+        name="original_folder"
+        webkitdirectory
+        directory
+        multiple
+        required
+      /><br /><br />
+
+      <label>Recovered Folder:</label><br />
+      <input
+        type="file"
+        name="recovered_folder"
+        webkitdirectory
+        directory
+        multiple
+        required
+      /><br /><br />
+
+      <input
+        type="submit"
+        value="Check Integrity"
+        style="
+          padding: 10px 20px;
+          background-color: #4caf50;
+          color: white;
+          border: none;
+        "
+      />
+    </form>
+    <br />
+    {{ result_table | safe }} {{ overall_rate | safe }}
+  </body>
+</html>
