@@ -1,4 +1,4 @@
-# StegoApp Docker & WSL Setup Guide
+# Stego Analyzer Docker & WSL Setup Guide
 
 This guide walks you through configuring Docker with Windows Subsystem for Linux (WSL) to build and run the StegoApp (steganography analysis) in a reproducible, cross‑platform environment.
 
@@ -10,7 +10,7 @@ This guide walks you through configuring Docker with Windows Subsystem for Linux
 2. [Enable WSL 2](#enable-wsl-2)
 3. [Install Docker Desktop](#install-docker-desktop)
 4. [Configure Docker for WSL](#configure-docker-for-wsl)
-5. [Clone StegoApp Repository](#clone-stegoapp-repository)
+5. [Clone Stego Analyzer Repository](#clone-stegoapp-repository)
 6. [Build the Docker Image](#build-the-docker-image)
 7. [Run the Container](#run-the-container)
 8. [Volume Mounts & Persistence](#volume-mounts--persistence)
@@ -68,18 +68,18 @@ This guide walks you through configuring Docker with Windows Subsystem for Linux
 In your WSL terminal (e.g., Ubuntu):
 
 ```bash
-git clone https://github.com/yourusername/stegoapp.git
-cd stegoapp
+git clone https://github.com/Vaisah/stego.git
+cd stego
 ```
 
 ---
 
 ## 5. Build the Docker Image
 
-From within the `stegoapp/` directory:
+From within the `stego/` directory:
 
 ```bash
-docker build -t stegoapp:latest -f Dockerfile .
+docker-compose up --build
 ```
 
 This will:
@@ -89,39 +89,6 @@ This will:
 - Expose the API on port `5000`
 
 ---
-
-## Docker Compose
-
-1. Create a `docker-compose.yml` at the project root:
-
-   ```yaml
-   version: "3.8"
-
-   services:
-     stegoapp:
-       build:
-         context: .
-         dockerfile: Dockerfile
-       image: stegoapp:latest
-       ports:
-         - "5000:5000"
-       volumes:
-         - ./data:/app/data
-       environment:
-         - ENV=development
-   ```
-
-2. Build and start the service:
-
-   ```bash
-   docker-compose up --build
-   ```
-
-3. To stop and remove containers:
-
-   ```bash
-   docker-compose down
-   ```
 
 ## 6. Run the Container
 
@@ -166,11 +133,6 @@ docker run --rm -it&#x20;
 -v \$(pwd)/data:/app/data&#x20;
 stegoapp\:dev
 
-```
-4. **Test**: use Postman or automated test suite inside container.
-
----
-
 ## 9. Troubleshooting
 
 - **WSL Distro Not Visible**: ensure your distro is set to version 2 (`wsl --set-version <distro> 2`).
@@ -181,10 +143,10 @@ stegoapp\:dev
 
 ## License
 
-This project is licensed under the MIT License. See [LICENSE](LICENSE) for details.
-
 ---
 
-*Guide updated: June 2025*
+_Guide updated: June 2025_
+
+```
 
 ```
