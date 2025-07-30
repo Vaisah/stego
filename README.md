@@ -1,4 +1,4 @@
-# Stego Analyzer Docker & WSL Setup Guide
+# Stego Analyzer Docker & WSL Setup Guide.
 
 This guide walks you through configuring Docker with Windows Subsystem for Linux (WSL) to build and run the StegoApp (steganography analysis) in a reproducible, cross‑platform environment.
 
