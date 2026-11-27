@@ -1,0 +1,60 @@
+#!/usr/bin/python3
+# -*- encoding: utf-8 -*-
+
+
+import os
+import sys
+import time
+sys.path.append('../')
+from config import DELAY_CHECK, UPLOAD_FOLDER  # noqa: E402
+from module import Module  # noqa: E402
+from utils import cmd  # noqa: E402
+
+RUNNING = []
+
+
+class PCRT(Module):
+    def __init__(self, md5):
+        Module.__init__(self, md5)
+
+    def run(self):
+        self.set_config_status("pcrt", "running")
+        # First verify if we do not already compute for original image
+        md5_image = self.config["md5_image"]
+        if self.config["md5_image"] != self.config["md5_full"] \
+           and os.path.isfile(f"{UPLOAD_FOLDER}/{md5_image}/pcrt.txt"):
+            cmd(f"cp {UPLOAD_FOLDER}/{md5_image}/pcrt.txt "
+                f"{self.folder}/pcrt.txt")
+        else:  # Else compute
+            image = self.config["image"]
+            c_input = f"{self.folder}/{image}"  # image.png
+            c_output = f"{self.folder}/pcrt.txt"  # pcrt.txt
+            cpng_output = f"{self.folder}/pcrt.png"  # pcrt.png
+            cmd(f"PCRT -y -m -v -i {c_input} > {c_output}")
+            cmd(f"PCRT -y -v -i {c_input} -o {cpng_output} >> {c_output}")
+            cmd(f"7z a {self.folder}/PCRT.7z {cpng_output}")
+            cmd(f"7z a {self.folder}/PCRT.7z {cpng_output}.data")
+            cmd(f"rm -r {cpng_output}")
+            cmd(f"rm -r {cpng_output}.data")
+        global RUNNING
+        RUNNING.remove(self.md5)
+        self.set_config_status("pcrt", "finished")
+
+
+if __name__ == "__main__":
+    while True:
+        dirs = os.listdir(UPLOAD_FOLDER)
+        for d in dirs:
+            try:
+                folder = f"{UPLOAD_FOLDER}/{d}"
+                if d in RUNNING or not os.path.isdir(folder):
+                    continue
+                m = PCRT(d)
+                status = m.get_config_status(d)
+                if status is None or status.get("pcrt") is None:
+                    RUNNING.append(d)
+                    m.start()  # Run
+            except Exception as e:
+                print(e)
+                continue
+        time.sleep(DELAY_CHECK)
