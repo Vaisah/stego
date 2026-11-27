@@ -1,0 +1,28 @@
+{% include 'header.html' %}
+<div class="filtercolor">
+  <div id="parenthome">
+    <div class="home_section">
+      <h2>Scan Results</h2>
+      <p>Scanned folder: <strong>{{ folder_name }}</strong></p>
+
+      <div>
+        <h3>Suspected Images ({{ suspected|length }})</h3>
+        <ul>
+          {% for file in suspected %}
+          <li>{{ file }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+
+      <div>
+        <h3>Clean Images ({{ clean|length }})</h3>
+        <ul>
+          {% for file in clean %}
+          <li>{{ file }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+{% include 'footer.html' %}

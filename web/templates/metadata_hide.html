@@ -1,0 +1,65 @@
+{% include "header.html" %}
+<h2>Metadata Hiding (Base64)</h2>
+<form id="metaForm" method="post" enctype="multipart/form-data">
+  <div class="form-group">
+    <label for="imageFile">Image File (JPEG/PNG):</label>
+    <input
+      id="imageFile"
+      type="file"
+      name="image"
+      accept="image/*"
+      required
+      class="form-control"
+    />
+  </div>
+  <div class="form-group">
+    <label for="payloadFile">Payload File (any type):</label>
+    <input
+      id="payloadFile"
+      type="file"
+      name="payload"
+      required
+      class="form-control"
+    />
+  </div>
+  <div class="form-group">
+    <label for="fieldSelect">Metadata Field:</label>
+    <select id="fieldSelect" name="field" class="form-control">
+      <option value="Comment">EXIF Comment</option>
+      <option value="UserComment">User Comment</option>
+      <option value="ImageDescription">Image Description</option>
+      <option value="XMP:Description">XMP:Description</option>
+    </select>
+  </div>
+  <button type="submit" class="btn btn-primary">Embed Payload</button>
+</form>
+
+<div id="result" class="mt-3"></div>
+
+<script>
+  $(function () {
+    $("#metaForm").submit(function (e) {
+      e.preventDefault();
+      var form = new FormData(this);
+      $("#result").html("Processing...");
+      $.ajax({
+        url: "/metadata_hide",
+        type: "POST",
+        data: form,
+        processData: false,
+        contentType: false,
+        xhrFields: { responseType: "blob" },
+        success: function (blob) {
+          var url = window.URL.createObjectURL(blob);
+          var filename = "stego_" + $("#imageFile")[0].files[0].name;
+          $("#result").html(
+            `<a href="${url}" download="${filename}" class="btn btn-success">Download Stego Image</a>`
+          );
+        },
+        error: function () {
+          $("#result").text("Error embedding metadata.");
+        },
+      });
+    });
+  });
+</script>
