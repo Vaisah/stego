@@ -6,6 +6,7 @@ services:
     container_name: stego_frontend
     volumes:
       - steg-analyze-data:/app/static/uploads
+      - hashjobs-data:/app/hashjobs
     ports:
       - "5000:5000"
     env_file:
@@ -23,6 +24,7 @@ services:
     container_name: stego_backend
     volumes:
       - steg-analyze-data:/app/uploads
+      - hashjobs-data:/app/hashjobs
     env_file:
       - .env
     depends_on:
@@ -56,3 +58,4 @@ networks:
 volumes:
   steg-analyze-data:
   stego-db:
+  hashjobs-data:

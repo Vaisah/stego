@@ -133,5 +133,16 @@ while sleep 3; do
             echo "Failed to start stegexpose: $status"
         fi
     fi
-    
+
+    ps aux |grep hashcrack.py |grep -v grep
+    PROCESS_STATUS=$?
+    if [ $PROCESS_STATUS -ne 0 ]; then
+        echo "hashcrack.py exited. Reboot..."
+        ./hashcrack.py &
+        status=$?
+        if [ $status -ne 0 ]; then
+            echo "Failed to start hashcrack: $status"
+        fi
+    fi
+
 done

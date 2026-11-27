@@ -1,233 +1,173 @@
-{% extends "header.html" %} {% block content %}
-<div class="container">
-  <h2>File Encryption/Decryption Tool</h2>
+{% include 'header.html' %}
+<style>
+  /* File Encryption — scoped to the site shell (Roboto Mono, green accent) */
+  #tool { max-width: 940px; margin: 40px auto; padding: 0 24px; color: #2a3342; }
+  #tool h1 { font-weight: 700; letter-spacing: .5px; margin: 0 0 4px; }
+  #tool h1 .accent { color: var(--color-green, #3b9f08); }
+  #tool .sub { color: #6b7688; margin: 0 0 24px; font-size: 14px; }
+  #tool .panel { background: #fff; border: 1px solid #e6e9ef; border-radius: 12px;
+    box-shadow: 0 6px 24px rgba(20,29,43,.06); padding: 22px; margin-bottom: 20px; }
+  #tool .panel h3 { margin: 0 0 16px; font-size: 15px; display: flex; align-items: center; gap: 8px; }
+  #tool .dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+  #tool .dot.enc { background: #3b82f6; } #tool .dot.dec { background: var(--color-green,#3b9f08); }
+  #tool label { display: block; font-weight: 600; margin-bottom: 6px; font-size: 14px; }
+  #tool input, #tool select { width: 100%; padding: 10px 12px; border: 1px solid #d7dce4;
+    border-radius: 8px; box-sizing: border-box; font-family: inherit; font-size: 14px; background: #fbfcfe; }
+  #tool .field { margin-bottom: 16px; }
+  #tool .keyrow { display: flex; gap: 8px; flex-wrap: wrap; align-items: stretch; }
+  #tool .keyrow input { flex: 1 1 240px; min-width: 0; }
+  /* override the global .btn width:100% so the key buttons hug their labels */
+  #tool .keyrow .btn { width: auto; flex: 0 0 auto; height: auto; line-height: normal; }
+  #tool .hint { color: #8a94a6; font-size: 12px; margin-top: 6px; }
+  #tool .btn { color: #fff; border: 0; padding: 11px 18px; border-radius: 8px;
+    font-family: inherit; font-size: 14px; font-weight: 600; cursor: pointer; white-space: nowrap;
+    transition: filter .15s, opacity .15s; }
+  #tool .btn:hover:not(:disabled) { filter: brightness(1.08); }
+  #tool .btn.green { background: var(--color-green, #3b9f08); }
+  #tool .btn.blue { background: #3b82f6; }
+  #tool .btn.grey { background: #6b7688; padding: 11px 14px; }
+  #tool .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  #tool .alert { padding: 12px 14px; border-radius: 8px; margin-top: 18px; display: none; font-size: 14px; }
+  #tool .alert.ok { background: #e4f7dd; color: #2a7a0a; border: 1px solid #bfe8ac; }
+  #tool .alert.bad { background: #fdecea; color: #b4231a; border: 1px solid #f6c7c2; }
+  #tool code { word-break: break-all; background: #0b1021; color: #cfe0ff; padding: 2px 6px;
+    border-radius: 5px; font-size: 12.5px; }
+  @media (max-width: 680px) { #tool .cols { grid-template-columns: 1fr; } }
+</style>
 
-  <div class="card mb-4">
-    <div class="card-header">Key Management</div>
-    <div class="card-body">
-      <div class="form-group">
-        <label for="keyInput">Encryption Key:</label>
-        <input
-          type="text"
-          class="form-control"
-          id="keyInput"
-          placeholder="Enter your key or leave empty for random key"
-        />
+<div id="tool">
+  <h1>File <span class="accent">Encryption</span></h1>
+  <p class="sub">Authenticated encryption (AES-256-GCM / ChaCha20-Poly1305 / Fernet) with a PBKDF2-derived key. Files stream — nothing is written to disk in plaintext.</p>
+
+  <div class="panel">
+    <h3>Key</h3>
+    <div class="field">
+      <label for="keyInput">Passphrase / Key</label>
+      <div class="keyrow">
+        <input type="password" id="keyInput" autocomplete="off"
+          placeholder="Enter a passphrase, or generate a random key" />
+        <button type="button" id="toggleKey" class="btn grey">Show</button>
+        <button type="button" id="genKey" class="btn grey">Random</button>
+        <button type="button" id="copyKey" class="btn grey">Copy</button>
       </div>
-      <div class="form-check mb-3">
-        <input class="form-check-input" type="checkbox" id="useRandomKey" />
-        <label class="form-check-label" for="useRandomKey"
-          >Generate Random Key</label
-        >
-      </div>
-      <button id="copyKeyBtn" class="btn btn-secondary">
-        Copy Key to Clipboard
-      </button>
+      <div class="hint">The key is never stored; PBKDF2-HMAC-SHA256 (600k iterations) derives the encryption key per file.</div>
+    </div>
+    <div class="field" style="margin-bottom:0">
+      <label for="algo">Algorithm</label>
+      <select id="algo">
+        {% for value, label in algorithms %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
+      </select>
     </div>
   </div>
 
-  <div class="row">
-    <div class="col-md-6">
-      <div class="card">
-        <div class="card-header bg-primary text-white">Encrypt File</div>
-        <div class="card-body">
-          <form id="encryptForm" enctype="multipart/form-data">
-            <div class="form-group">
-              <label for="encryptFile">Select file to encrypt:</label>
-              <input
-                type="file"
-                class="form-control-file"
-                id="encryptFile"
-                required
-              />
-            </div>
-            <button type="submit" class="btn btn-primary">Encrypt File</button>
-          </form>
-          <div id="encryptProgress" class="mt-3" style="display: none">
-            <div class="progress">
-              <div
-                class="progress-bar"
-                role="progressbar"
-                style="width: 0%"
-              ></div>
-            </div>
-            <p class="text-center mt-2">Processing...</p>
-          </div>
-        </div>
-      </div>
+  <div class="cols">
+    <div class="panel">
+      <h3><span class="dot enc"></span>Encrypt</h3>
+      <form id="encryptForm">
+        <div class="field"><label for="encryptFile">File to encrypt</label>
+          <input type="file" id="encryptFile" required /></div>
+        <button type="submit" class="btn blue" style="width:100%">Encrypt &amp; Download</button>
+      </form>
     </div>
-
-    <div class="col-md-6">
-      <div class="card">
-        <div class="card-header bg-success text-white">Decrypt File</div>
-        <div class="card-body">
-          <form id="decryptForm" enctype="multipart/form-data">
-            <div class="form-group">
-              <label for="decryptFile">Select file to decrypt:</label>
-              <input
-                type="file"
-                class="form-control-file"
-                id="decryptFile"
-                required
-              />
-            </div>
-            <button type="submit" class="btn btn-success">Decrypt File</button>
-          </form>
-          <div id="decryptProgress" class="mt-3" style="display: none">
-            <div class="progress">
-              <div
-                class="progress-bar"
-                role="progressbar"
-                style="width: 0%"
-              ></div>
-            </div>
-            <p class="text-center mt-2">Processing...</p>
-          </div>
-        </div>
-      </div>
+    <div class="panel">
+      <h3><span class="dot dec"></span>Decrypt</h3>
+      <form id="decryptForm">
+        <div class="field"><label for="decryptFile">File to decrypt</label>
+          <input type="file" id="decryptFile" required /></div>
+        <button type="submit" class="btn green" style="width:100%">Decrypt &amp; Download</button>
+      </form>
     </div>
   </div>
 
-  <div id="resultAlert" class="alert mt-4" style="display: none"></div>
+  <div id="resultAlert" class="alert"></div>
 </div>
 
 <script>
-  $(document).ready(function () {
-    // Generate random key when checkbox is clicked
-    $("#useRandomKey").change(function () {
-      if (this.checked) {
-        fetch("/random_key")
-          .then((response) => response.json())
-          .then((data) => {
-            $("#keyInput").val(data.key);
-          });
-      }
-    });
+  (function () {
+    var keyInput = document.getElementById("keyInput");
+    var alertBox = document.getElementById("resultAlert");
 
-    // Copy key to clipboard
-    $("#copyKeyBtn").click(function () {
-      const keyInput = $("#keyInput");
-      keyInput.select();
-      document.execCommand("copy");
-      alert("Key copied to clipboard!");
-    });
+    function showAlert(html, ok) {
+      alertBox.className = "alert " + (ok ? "ok" : "bad");
+      alertBox.innerHTML = html; alertBox.style.display = "block";
+    }
+    function filenameFrom(resp, fallback) {
+      var cd = resp.headers.get("Content-Disposition") || "";
+      var m = /filename="?([^"]+)"?/.exec(cd); return m ? m[1] : fallback;
+    }
+    function download(blob, name) {
+      var url = URL.createObjectURL(blob); var a = document.createElement("a");
+      a.href = url; a.download = name; document.body.appendChild(a); a.click();
+      document.body.removeChild(a); URL.revokeObjectURL(url);
+    }
+    function toHex(buf) {
+      return Array.prototype.map.call(new Uint8Array(buf), function (b) {
+        return ("0" + b.toString(16)).slice(-2); }).join("");
+    }
 
-    // Encrypt form submission
-    $("#encryptForm").submit(function (e) {
+    document.getElementById("toggleKey").addEventListener("click", function () {
+      var show = keyInput.type === "password";
+      keyInput.type = show ? "text" : "password"; this.textContent = show ? "Hide" : "Show";
+    });
+    document.getElementById("genKey").addEventListener("click", function () {
+      fetch("/random_key").then(function (r) { return r.json(); }).then(function (d) {
+        keyInput.value = d.key; keyInput.type = "text";
+        document.getElementById("toggleKey").textContent = "Hide";
+      });
+    });
+    document.getElementById("copyKey").addEventListener("click", function () {
+      var val = keyInput.value || "";
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(val).then(
+          function () { showAlert("Key copied to clipboard.", true); },
+          function () { fallbackCopy(val); });
+      } else { fallbackCopy(val); }
+    });
+    function fallbackCopy(val) {
+      var ta = document.createElement("textarea");
+      ta.value = val; ta.style.position = "fixed"; ta.style.opacity = "0";
+      document.body.appendChild(ta); ta.focus(); ta.select();
+      try { document.execCommand("copy"); showAlert("Key copied.", true); }
+      catch (e) { showAlert("Copy failed; copy it manually.", false); }
+      document.body.removeChild(ta);
+    }
+
+    function submitCrypto(endpoint, fileInput, defaultName, afterBlob) {
+      var file = fileInput.files[0];
+      if (!file) { showAlert("Please choose a file.", false); return; }
+      if (!keyInput.value) { showAlert("Please enter a key.", false); return; }
+      var fd = new FormData();
+      fd.append("file", file); fd.append("key", keyInput.value);
+      fd.append("algorithm", document.getElementById("algo").value);
+      showAlert("Working…", true);
+      fetch(endpoint, { method: "POST", body: fd })
+        .then(function (resp) {
+          if (resp.status === 413) throw new Error("File too large (max 100 MB).");
+          if (!resp.ok) return resp.json().then(function (e) { throw new Error(e.error || "Operation failed"); });
+          var name = filenameFrom(resp, defaultName);
+          return resp.blob().then(function (b) { return { blob: b, name: name }; });
+        })
+        .then(function (r) { afterBlob(r.blob, r.name); })
+        .catch(function (err) { showAlert(err.message, false); });
+    }
+
+    document.getElementById("encryptForm").addEventListener("submit", function (e) {
       e.preventDefault();
-      const formData = new FormData();
-      formData.append("file", $("#encryptFile")[0].files[0]);
-      formData.append("key", $("#keyInput").val());
-      formData.append("use_random_key", $("#useRandomKey").is(":checked"));
-
-      $("#encryptProgress").show();
-      $("#encryptForm button").prop("disabled", true);
-
-      fetch("/encrypt", {
-        method: "POST",
-        body: formData,
-      })
-        .then((response) => {
-          if (response.ok) {
-            return response.blob();
-          }
-          return response.json().then((err) => {
-            throw err;
-          });
-        })
-        .then((blob) => {
-          const url = window.URL.createObjectURL(blob);
-          const a = document.createElement("a");
-          a.href = url;
-          a.download = $("#encryptFile")[0].files[0].name + "_ENCRYPTED";
-          document.body.appendChild(a);
-          a.click();
-          window.URL.revokeObjectURL(url);
-
-          $("#resultAlert")
-            .removeClass("alert-danger")
-            .addClass("alert-success")
-            .text("File encrypted successfully!")
-            .show();
-        })
-        .catch((error) => {
-          $("#resultAlert")
-            .removeClass("alert-success")
-            .addClass("alert-danger")
-            .text(error.error || "Encryption failed")
-            .show();
-        })
-        .finally(() => {
-          $("#encryptProgress").hide();
-          $("#encryptForm button").prop("disabled", false);
-        });
+      var f = document.getElementById("encryptFile");
+      submitCrypto("/encrypt", f, (f.files[0] ? f.files[0].name : "file") + ".enc",
+        function (blob, name) { download(blob, name); showAlert("Encrypted → <code>" + name + "</code>", true); });
     });
-
-    // Decrypt form submission
-    $("#decryptForm").submit(function (e) {
+    document.getElementById("decryptForm").addEventListener("submit", function (e) {
       e.preventDefault();
-      const formData = new FormData();
-      formData.append("file", $("#decryptFile")[0].files[0]);
-      formData.append("key", $("#keyInput").val());
-
-      $("#decryptProgress").show();
-      $("#decryptForm button").prop("disabled", true);
-
-      fetch("/decrypt", {
-        method: "POST",
-        body: formData,
-      })
-        .then((response) => {
-          if (response.ok) {
-            return response.blob();
-          }
-          return response.json().then((err) => {
-            throw err;
-          });
-        })
-        .then((blob) => {
-          const url = window.URL.createObjectURL(blob);
-          const a = document.createElement("a");
-          a.href = url;
-          a.download = $("#decryptFile")[0].files[0].name.replace(
-            "_ENCRYPTED",
-            "_DECRYPTED"
-          );
-          document.body.appendChild(a);
-          a.click();
-          window.URL.revokeObjectURL(url);
-
-          $("#resultAlert")
-            .removeClass("alert-danger")
-            .addClass("alert-success")
-            .text("File decrypted successfully!")
-            .show();
-        })
-        .catch((error) => {
-          $("#resultAlert")
-            .removeClass("alert-success")
-            .addClass("alert-danger")
-            .text(error.error || "Decryption failed")
-            .show();
-        })
-        .finally(() => {
-          $("#decryptProgress").hide();
-          $("#decryptForm button").prop("disabled", false);
-        });
+      var f = document.getElementById("decryptFile");
+      submitCrypto("/decrypt", f, "decrypted.bin", function (blob, name) {
+        download(blob, name);
+        if (window.crypto && crypto.subtle) {
+          blob.arrayBuffer().then(function (buf) { return crypto.subtle.digest("SHA-256", buf); })
+            .then(function (d) { showAlert("Decrypted → <code>" + name + "</code><br>SHA-256: <code>" + toHex(d) + "</code>", true); });
+        } else { showAlert("Decrypted → " + name + " (SHA-256 needs HTTPS/localhost).", true); }
+      });
     });
-  });
+  })();
 </script>
-
-<style>
-  .card {
-    margin-bottom: 20px;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-  }
-  .card-header {
-    font-weight: bold;
-  }
-  .progress {
-    height: 20px;
-  }
-</style>
-{% endblock %}
+{% include 'footer.html' %}

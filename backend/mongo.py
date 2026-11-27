@@ -17,6 +17,10 @@ def get_db():
 mydb = get_db()
 db_uploads = mydb["uploads"]
 db_status = mydb["status"]
+# Additive collections for the hash-cracking pipeline (uploads/status unchanged).
+db_hash_jobs = mydb["hash_jobs"]
+db_hash_cache = mydb["hash_cache"]
+db_hash_meta = mydb["hash_meta"]
 
 
 def get_status(file):

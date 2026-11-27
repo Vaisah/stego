@@ -6,17 +6,23 @@ import hashlib
 import json
 import os
 import re
+import secrets
 import subprocess
 from werkzeug.utils import secure_filename
 import time
 from flask import Flask, render_template, request, jsonify, \
-    send_from_directory, redirect, url_for, make_response, Response
+    send_from_directory, redirect, url_for, make_response, Response, \
+    send_file, stream_with_context
 from flask_pymongo import PyMongo
 from bson.objectid import ObjectId
+from bson.errors import InvalidId
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+import crypto_utils
 
 app = Flask(__name__)
 app.config["MONGO_URI"] = "mongodb://xander:xander21@mongodb:27017/flaskdb?authSource=admin"
-app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16 Mb max
+app.config['MAX_CONTENT_LENGTH'] = 100 * 1024 * 1024  # 100 Mb max (allows file encryption)
 app.config['LANGUAGES'] = {
     'en': 'English',
     'fr': 'Français'
@@ -25,9 +31,11 @@ app.config['LANGUAGES'] = {
 mongo = PyMongo(app)
 db = mongo.db
 
+# Rate limiter (in-memory storage; fine for the single-process dev server).
+limiter = Limiter(key_func=get_remote_address, app=app, default_limits=[])
 
-mongo = PyMongo(app)
-db = mongo.db
+# Shared volume with the backend worker for custom-wordlist hand-off.
+HASHJOBS_DIR = os.environ.get("HASHJOBS_DIR", "/app/hashjobs")
 
 UPLOAD_FOLDER = 'static/uploads'
 ALLOWED_EXTENSIONS = ["jpeg", "png", "bmp",
@@ -373,120 +381,165 @@ import subprocess
 from flask import Flask, request, render_template, flash, redirect
 from werkzeug.utils import secure_filename
 
-# Hash Algorithms and Tool Mappings
-HASHCAT_MODES = {
-    'MD5': '0',
-    'SHA1': '100',
-    'SHA256': '1400',
-    'bcrypt': '3200',
-}
+# --- Hash cracking: dispatch to the backend worker (the "steganography way") ---
+# John/Hashcat run in the backend container (they are not installed in the web
+# image). The web tier only enqueues jobs in Mongo and streams progress/results
+# back. See backend/modules/hashcrack.py for the worker.
 
-JOHN_FORMATS = {
-    'MD5': 'raw-md5',
-    'SHA1': 'raw-sha1',
-    'SHA256': 'raw-sha256',
-    'bcrypt': 'bcrypt',
-}
+CRACK_RULES = {"", "best64", "toggles", "dive"}
+MAX_HASHES_PER_JOB = 1000
 
-# Paths to tools (verify in your Docker container)
-# JOHN_PATH = '/usr/bin/john'  # or '/usr/sbin/john'
-# HASHCAT_PATH = '/usr/bin/hashcat'
 
-def detect_hash_type(hash_sample):
-    """Detect hash type using hashid."""
+def _parse_hash_lines(text):
+    return [s.strip() for s in (text or "").splitlines() if s.strip()]
+
+
+def _wordlist_warning():
+    """Return a warning string if the backend reports no default wordlist."""
     try:
-        output = subprocess.check_output(
-            ['hashid', '-m', hash_sample],
-            stderr=subprocess.PIPE,
-            text=True
-        )
-        for line in output.splitlines():
-            for algo in HASHCAT_MODES:
-                if algo in line:
-                    return algo
-    except Exception as e:
-        flash(f"Hash detection error: {e}", "error")
-    return 'MD5'  # Default fallback
+        health = db.hash_meta.find_one({"_id": "health"})
+    except Exception:
+        return None
+    if health and not health.get("wordlist_present", True):
+        return (f"Default wordlist missing in the backend "
+                f"({health.get('wordlist')}). Upload a wordlist or jobs will error.")
+    return None
+
 
 @app.route('/crack_hash', methods=['GET', 'POST'])
+@limiter.limit("5 per minute", exempt_when=lambda: request.method != "POST")
 def crack_hash():
-    result = None
-    if request.method == 'POST':
-        temp_dir = tempfile.mkdtemp()
+    if request.method == 'GET':
+        return render_template('crack_hash.html',
+                               wordlist_warning=_wordlist_warning())
+
+    # --- POST: dispatch a job (consumed by crack_hash.html via fetch) ---
+    hash_text = request.form.get('hash_input', '')
+    hash_file = request.files.get('hash_file')
+    if hash_file and hash_file.filename:
         try:
-            # Handle hash input (text or file)
-            hash_text = request.form.get('hash_input', '').strip()
-            hash_file = request.files.get('hash_file')
-            hash_path = os.path.join(temp_dir, 'hash.txt')
+            hash_text = hash_file.read().decode('utf-8', 'replace')
+        except Exception:
+            return jsonify({"error": "Could not read hash file"}), 400
 
-            if hash_file:
-                hash_file.save(hash_path)
-            elif hash_text:
-                with open(hash_path, 'w') as f:
-                    f.write(hash_text + '\n')
-            else:
-                flash('No hash provided!', 'error')
-                return redirect(request.url)
+    hashes = _parse_hash_lines(hash_text)
+    if not hashes:
+        return jsonify({"error": "No hash provided"}), 400
+    if len(hashes) > MAX_HASHES_PER_JOB:
+        return jsonify({"error": f"Too many hashes (max {MAX_HASHES_PER_JOB})"}), 400
 
-            # Handle wordlist (upload or default)
-            wordlist_file = request.files.get('wordlist')
-            wordlist_path = '/usr/share/wordlists/rockyou.txt'  # Default
+    rule = (request.form.get('rule') or '').strip().lower()
+    if rule not in CRACK_RULES:
+        rule = ''
 
-            if wordlist_file and wordlist_file.filename:
-                wordlist_path = os.path.join(temp_dir, secure_filename(wordlist_file.filename))
-                wordlist_file.save(wordlist_path)
-            elif not os.path.exists(wordlist_path):
-                flash('Default wordlist not found!', 'error')
-                return redirect(request.url)
+    # Cache check: if every hash is already cracked, return immediately (<100 ms).
+    cached = {}
+    for h in hashes:
+        doc = db.hash_cache.find_one(
+            {"_id": hashlib.sha256(h.encode()).hexdigest()})
+        if doc:
+            cached[h] = doc
+    if len(cached) == len(hashes):
+        return jsonify({
+            "cached": True,
+            "results": [{
+                "line": h,
+                "hash_type": cached[h].get("hash_type"),
+                "cracked": cached[h].get("plaintext"),
+                "via": cached[h].get("via"),
+            } for h in hashes],
+        })
 
-            # Detect hash type
-            with open(hash_path, 'r') as f:
-                sample_hash = f.readline().strip()
-            hash_type = detect_hash_type(sample_hash)
-            john_fmt = JOHN_FORMATS.get(hash_type, 'raw-md5')
-            hashcat_mode = HASHCAT_MODES.get(hash_type, '0')
+    entries = [{"line": h, "hash_type": None, "cracked": None, "via": None}
+               for h in hashes]
+    job = {
+        "created": time.time(),
+        "source_ip": request.remote_addr,
+        "status": "queued",
+        "hashes": entries,
+        "rules": rule,
+        "progress": {"log": []},
+        "wordlist_name": None,
+        "wordlist_path": None,
+    }
+    job_id = db.hash_jobs.insert_one(job).inserted_id
 
-            # Run John the Ripper
-            try:
-                subprocess.run(
-                    ['john', f'--format={john_fmt}', f'--wordlist={wordlist_path}', hash_path],
-                    check=True,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                    text=True
-                )
-                john_output = subprocess.check_output(
-                    ['john', '--show', hash_path],
-                    text=True
-                ).strip()
-            except subprocess.CalledProcessError as e:
-                john_output = f"John failed: {e.stderr}"
-            except Exception as e:
-                john_output = f"John error: {str(e)}"
-
-            # Run Hashcat
-            try:
-                hashcat_output = subprocess.check_output(
-                    ['hashcat', '-m', hashcat_mode, hash_path, wordlist_path, '--quiet', '--show'],
-                    text=True
-                ).strip()
-            except subprocess.CalledProcessError as e:
-                hashcat_output = f"Hashcat failed: {e.stderr}"
-            except Exception as e:
-                hashcat_output = f"Hashcat error: {str(e)}"
-
-            result = {
-                'hash_type': hash_type,
-                'john': john_output if john_output else "No results from John.",
-                'hashcat': hashcat_output if hashcat_output else "No results from Hashcat."
-            }
-
+    # Optional custom wordlist -> hand off to the backend via the shared volume.
+    wordlist_file = request.files.get('wordlist')
+    if wordlist_file and wordlist_file.filename:
+        job_dir = os.path.join(HASHJOBS_DIR, str(job_id))
+        try:
+            os.makedirs(job_dir, exist_ok=True)
+            wl_path = os.path.join(job_dir, "wordlist.txt")
+            wordlist_file.save(wl_path)
+            db.hash_jobs.update_one({"_id": job_id}, {"$set": {
+                "wordlist_path": wl_path,
+                "wordlist_name": secure_filename(wordlist_file.filename)}})
         except Exception as e:
-            flash(f"Unexpected error: {str(e)}", "error")
-        finally:
-            shutil.rmtree(temp_dir, ignore_errors=True)  # Cleanup
+            db.hash_jobs.update_one({"_id": job_id}, {"$set": {
+                "status": "error", "error": f"Wordlist save failed: {e}"}})
+            return jsonify({"error": "Could not store wordlist"}), 500
 
-    return render_template('crack_hash.html', result=result)
+    return jsonify({"job_id": str(job_id)})
+
+
+def _crack_results(job):
+    return [{
+        "line": e["line"],
+        "hash_type": e.get("hash_type"),
+        "cracked": e.get("cracked"),
+        "via": e.get("via"),
+    } for e in job.get("hashes", [])]
+
+
+@app.route('/crack_status/<job_id>')
+def crack_status(job_id):
+    try:
+        oid = ObjectId(job_id)
+    except (InvalidId, TypeError):
+        return jsonify({"error": "Unknown job"}), 404
+    job = db.hash_jobs.find_one({"_id": oid})
+    if not job:
+        return jsonify({"error": "Unknown job"}), 404
+    return jsonify({
+        "status": job.get("status"),
+        "error": job.get("error"),
+        "results": _crack_results(job),
+        "log": [l.get("line") for l in job.get("progress", {}).get("log", [])],
+    })
+
+
+@app.route('/crack_progress/<job_id>')
+def crack_progress(job_id):
+    """Server-Sent Events stream of the job log until it finishes."""
+    try:
+        oid = ObjectId(job_id)
+    except (InvalidId, TypeError):
+        return jsonify({"error": "Unknown job"}), 404
+
+    @stream_with_context
+    def generate():
+        sent = 0
+        deadline = time.time() + 1800  # 30 min hard cap
+        while time.time() < deadline:
+            job = db.hash_jobs.find_one({"_id": oid})
+            if not job:
+                yield "event: error\ndata: \"unknown job\"\n\n"
+                return
+            log = job.get("progress", {}).get("log", [])
+            while sent < len(log):
+                yield f"data: {json.dumps(log[sent].get('line', ''))}\n\n"
+                sent += 1
+            status = job.get("status")
+            if status in ("done", "error"):
+                yield f"event: {status}\ndata: {json.dumps(status)}\n\n"
+                return
+            time.sleep(1)
+        yield "event: timeout\ndata: \"timeout\"\n\n"
+
+    return Response(generate(), mimetype="text/event-stream",
+                    headers={"Cache-Control": "no-cache",
+                             "X-Accel-Buffering": "no"})
 
 # --- Add countermeasures ---
 from PIL import Image
@@ -568,116 +621,93 @@ def apply_countermeasures():
 
     return render_template('countermeasures.html', **load_i18n(request))
 
-# Add these imports at the top
-from cryptography.fernet import Fernet
-import hashlib, base64, os, struct
+# --- File encryption: streaming AEAD with a self-describing header ---
+# Primitives live in crypto_utils.py (PBKDF2 + AES-256-GCM / ChaCha20-Poly1305 /
+# Fernet, with a legacy Fernet-chunk fallback on decrypt). Files are streamed, so
+# no plaintext temp file is ever written to disk.
+from itertools import chain
+
+ALGO_CHOICES = [
+    ("aes-256-gcm", "AES-256-GCM (recommended)"),
+    ("chacha20-poly1305", "ChaCha20-Poly1305 (mobile-friendly)"),
+    ("fernet", "Fernet (easy)"),
+]
+
 
 @app.route('/crypto')
 def crypto_tool():
-    return render_template('crypto.html', **load_i18n(request))
+    return render_template('crypto.html', algorithms=ALGO_CHOICES,
+                           **load_i18n(request))
+
+
+def _too_large():
+    cl = request.content_length
+    return cl is not None and cl > crypto_utils.MAX_FILE_SIZE
+
 
 @app.route('/encrypt', methods=['POST'])
 def encrypt_file():
-    if 'file' not in request.files:
+    if 'file' not in request.files or not request.files['file'].filename:
         return jsonify({"error": "No file provided"}), 400
-    
+    if _too_large():
+        return jsonify({"error": "File too large (max 100 MB)"}), 413
+
     file = request.files['file']
-    key = request.form.get('key', '').strip()
-    use_random_key = request.form.get('use_random_key') == 'true'
-    
-    if use_random_key:
-        key = Fernet.generate_key().decode()
-    elif not key:
+    key = request.form.get('key', '')
+    if not key:
         return jsonify({"error": "No key provided"}), 400
-    
-    # Process the key like in EasyEnc.py
-    _key = hashlib.md5(key.encode()).hexdigest()
-    _key = base64.urlsafe_b64encode(_key.encode())
-    
-    # Save the file temporarily
-    temp_dir = tempfile.mkdtemp()
-    original_path = os.path.join(temp_dir, secure_filename(file.filename))
-    encrypted_path = original_path + "_ENCRYPTED"
-    file.save(original_path)
-    
-    try:
-        # Encrypt the file
-        fernet = Fernet(_key)
-        with open(original_path, "rb") as f_in, open(encrypted_path, "wb") as f_out:
-            while True:
-                chunk = f_in.read(4096)
-                if not chunk:
-                    break
-                encrypted_chunk = fernet.encrypt(chunk)
-                f_out.write(struct.pack("<I", len(encrypted_chunk)))
-                f_out.write(encrypted_chunk)
-        
-        # Return the encrypted file
-        return send_file(
-            encrypted_path,
-            as_attachment=True,
-            download_name=file.filename + "_ENCRYPTED",
-            mimetype='application/octet-stream'
-        )
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-    finally:
-        # Clean up
-        shutil.rmtree(temp_dir, ignore_errors=True)
+    algo = crypto_utils.resolve_algo(request.form.get('algorithm'))
+
+    name = secure_filename(file.filename) or "file"
+    gen = crypto_utils.encrypt_generator(file.stream, key, algo, name)
+    headers = {
+        "Content-Disposition": f'attachment; filename="{name}.enc"',
+        "X-Content-Type-Options": "nosniff",
+    }
+    return Response(stream_with_context(gen),
+                    mimetype="application/octet-stream", headers=headers)
+
 
 @app.route('/decrypt', methods=['POST'])
 def decrypt_file():
-    if 'file' not in request.files:
+    if 'file' not in request.files or not request.files['file'].filename:
         return jsonify({"error": "No file provided"}), 400
-    
+    if _too_large():
+        return jsonify({"error": "File too large (max 100 MB)"}), 413
+
     file = request.files['file']
-    key = request.form.get('key', '').strip()
-    
+    key = request.form.get('key', '')
     if not key:
         return jsonify({"error": "No key provided"}), 400
-    
-    # Process the key like in EasyEnc.py
-    _key = hashlib.md5(key.encode()).hexdigest()
-    _key = base64.urlsafe_b64encode(_key.encode())
-    
-    # Save the file temporarily
-    temp_dir = tempfile.mkdtemp()
-    encrypted_path = os.path.join(temp_dir, secure_filename(file.filename))
-    decrypted_path = encrypted_path.replace("_ENCRYPTED", "_DECRYPTED")
-    file.save(encrypted_path)
-    
+
+    # Validate the key against the header + first chunk before streaming a 200.
     try:
-        # Decrypt the file
-        fernet = Fernet(_key)
-        with open(encrypted_path, "rb") as f_in, open(decrypted_path, "wb") as f_out:
-            while True:
-                data_size = f_in.read(4)
-                if len(data_size) == 0:
-                    break
-                encrypted_chunk = f_in.read(struct.unpack("<I", data_size)[0])
-                try:
-                    decrypted_chunk = fernet.decrypt(encrypted_chunk)
-                    f_out.write(decrypted_chunk)
-                except:
-                    return jsonify({"error": "Decryption failed - wrong key?"}), 400
-        
-        # Return the decrypted file
-        return send_file(
-            decrypted_path,
-            as_attachment=True,
-            download_name=file.filename.replace("_ENCRYPTED", "_DECRYPTED"),
-            mimetype='application/octet-stream'
-        )
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-    finally:
-        # Clean up
-        shutil.rmtree(temp_dir, ignore_errors=True)
-        
+        gen = crypto_utils.decrypt_dispatch(file.stream, key)
+        first = next(gen)
+    except StopIteration:
+        first, gen = b"", iter(())
+    except crypto_utils.DecryptError:
+        return jsonify(
+            {"error": "Decryption failed - wrong key or corrupt file"}), 400
+
+    src = secure_filename(file.filename) or "file"
+    for suffix in (".enc", "_ENCRYPTED"):
+        if src.endswith(suffix):
+            src = src[: -len(suffix)]
+            break
+    out_name = src or "decrypted.bin"
+    headers = {
+        "Content-Disposition": f'attachment; filename="{out_name}"',
+        "X-Content-Type-Options": "nosniff",
+    }
+    return Response(stream_with_context(chain([first], gen)),
+                    mimetype="application/octet-stream", headers=headers)
+
+
 @app.route('/random_key')
 def random_key():
-    key = Fernet.generate_key().decode()
-    return jsonify({"key": key})
+    # A strong passphrase; the server derives the actual key via PBKDF2.
+    return jsonify({"key": secrets.token_urlsafe(32)})
 
 
 from flask import Flask, request, render_template_string
