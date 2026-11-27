@@ -1,100 +1,180 @@
-{%include 'header.html'%}
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <title>Hash Cracker</title>
-    <style>
-      body {
-        font-family: sans-serif;
-        background-color: #f5f5f5;
-        padding: 20px;
-      }
-      .container {
-        background: white;
-        max-width: 800px;
-        margin: 0 auto;
-        padding: 20px;
-        border-radius: 8px;
-        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-      }
-      .form-group {
-        margin-bottom: 15px;
-      }
-      label {
-        display: block;
-        margin-bottom: 5px;
-        font-weight: bold;
-      }
-      textarea,
-      input[type="file"],
-      button {
-        width: 100%;
-        padding: 8px;
-        border: 1px solid #ddd;
-        border-radius: 4px;
-      }
-      button {
-        background: #007bff;
-        color: white;
-        border: none;
-        cursor: pointer;
-        padding: 10px;
-        font-size: 16px;
-      }
-      button:hover {
-        background: #0056b3;
-      }
-      pre {
-        background: #f8f9fa;
-        padding: 10px;
-        border-radius: 4px;
-        overflow-x: auto;
-      }
-      .error {
-        color: red;
-      }
-    </style>
-  </head>
-  <body>
-    <div class="container">
-      <h1>Hash Cracker</h1>
-      {% with messages = get_flashed_messages(with_categories=true) %} {% if
-      messages %} {% for category, message in messages %}
-      <div class="error">{{ message }}</div>
-      {% endfor %} {% endif %} {% endwith %}
+{% include 'header.html' %}
+<style>
+  /* Hash Cracker — scoped to the site shell (Roboto Mono, green accent) */
+  #tool { max-width: 920px; margin: 40px auto; padding: 0 24px; color: #2a3342; }
+  #tool h1 { font-weight: 700; letter-spacing: .5px; margin: 0 0 4px; }
+  #tool h1 .accent { color: var(--color-green, #3b9f08); }
+  #tool .sub { color: #6b7688; margin: 0 0 24px; font-size: 14px; }
+  #tool .panel { background: #fff; border: 1px solid #e6e9ef; border-radius: 12px;
+    box-shadow: 0 6px 24px rgba(20,29,43,.06); padding: 22px; margin-bottom: 20px; }
+  #tool label { display: block; font-weight: 600; margin-bottom: 6px; font-size: 14px; }
+  #tool textarea, #tool input[type=file], #tool select {
+    width: 100%; padding: 10px 12px; border: 1px solid #d7dce4; border-radius: 8px;
+    box-sizing: border-box; font-family: inherit; font-size: 14px; background: #fbfcfe; }
+  #tool textarea { resize: vertical; }
+  #tool .field { margin-bottom: 16px; }
+  #tool .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  #tool .hint { color: #8a94a6; font-size: 12px; margin-top: 4px; }
+  #tool .btn { background: var(--color-green, #3b9f08); color: #fff; border: 0;
+    padding: 12px 20px; border-radius: 8px; font-family: inherit; font-size: 15px;
+    font-weight: 600; cursor: pointer; transition: filter .15s, opacity .15s; }
+  #tool .btn:hover:not(:disabled) { filter: brightness(1.08); }
+  #tool .btn:disabled { opacity: .55; cursor: not-allowed; }
+  #tool .warn { background: #fff7e6; border: 1px solid #ffe0a3; color: #7a5200;
+    padding: 12px 14px; border-radius: 8px; margin-bottom: 16px; font-size: 14px; }
+  #tool .err { color: #c0392b; font-size: 14px; min-height: 18px; }
+  #tool #status { font-weight: 600; margin: 8px 0 14px; display: flex; align-items: center; gap: 8px; }
+  #tool .spinner { width: 14px; height: 14px; border: 2px solid #cdd4df;
+    border-top-color: var(--color-green, #3b9f08); border-radius: 50%;
+    animation: spin .8s linear infinite; display: none; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  #tool table { width: 100%; border-collapse: collapse; }
+  #tool th, #tool td { text-align: left; padding: 10px 12px; font-size: 13px;
+    border-bottom: 1px solid #eef1f5; word-break: break-all; }
+  #tool th { color: #6b7688; font-weight: 600; text-transform: uppercase; letter-spacing: .4px; font-size: 11px; }
+  #tool .badge { display: inline-block; padding: 3px 10px; border-radius: 20px;
+    font-size: 12px; font-weight: 600; }
+  #tool .badge.ok { background: #e4f7dd; color: #2a7a0a; }
+  #tool .badge.no { background: #eef0f3; color: #7a8294; }
+  #tool .tag { font-size: 11px; color: #5a6373; background: #eef1f5; padding: 2px 8px; border-radius: 6px; }
+  #tool pre { background: #0b1021; color: #cfe0ff; padding: 14px; border-radius: 10px;
+    overflow: auto; max-height: 340px; font-size: 12.5px; line-height: 1.5; margin: 0; }
+  @media (max-width: 640px) { #tool .grid { grid-template-columns: 1fr; } }
+</style>
 
-      <form method="post" enctype="multipart/form-data">
-        <div class="form-group">
-          <label for="hash_input">Paste Hash:</label>
-          <textarea
-            name="hash_input"
-            rows="3"
-            placeholder="e.g., 5f4dcc3b5aa765d61d8327deb882cf99 (MD5)"
-          ></textarea>
-        </div>
-        <div class="form-group">
-          <label for="hash_file">Or Upload Hash File:</label>
-          <input type="file" name="hash_file" accept=".txt" />
-        </div>
-        <div class="form-group">
-          <label for="wordlist">Upload Wordlist (optional):</label>
-          <input type="file" name="wordlist" accept=".txt" />
-          <small>Default: /usr/share/wordlists/rockyou.txt</small>
-        </div>
-        <button type="submit">Crack Hash</button>
-      </form>
+<div id="tool">
+  <h1>Hash <span class="accent">Cracker</span></h1>
+  <p class="sub">Dispatches John the Ripper &amp; Hashcat in parallel on the backend. Paste one hash per line.</p>
 
-      {% if result %}
-      <h2>Results ({{ result.hash_type }})</h2>
-      <div class="form-group">
-        <h3>John the Ripper</h3>
-        <pre>{{ result.john }}</pre>
+  {% if wordlist_warning %}<div class="warn">⚠️ {{ wordlist_warning }}</div>{% endif %}
+  <div id="clientError" class="err"></div>
+
+  <div class="panel">
+    <form id="crackForm" enctype="multipart/form-data">
+      <div class="field">
+        <label for="hash_input">Hash(es)</label>
+        <textarea id="hash_input" name="hash_input" rows="3"
+          placeholder="e.g. 5f4dcc3b5aa765d61d8327deb882cf99"></textarea>
       </div>
-      <div class="form-group">
-        <h3>Hashcat</h3>
-        <pre>{{ result.hashcat }}</pre>
+      <div class="grid">
+        <div class="field">
+          <label for="hash_file">…or upload a hash file</label>
+          <input type="file" id="hash_file" name="hash_file" accept=".txt" />
+        </div>
+        <div class="field">
+          <label for="wordlist">Wordlist (optional)</label>
+          <input type="file" id="wordlist" name="wordlist" accept=".txt" />
+          <div class="hint">Default: the backend's rockyou.txt</div>
+        </div>
       </div>
-      {% endif %}
-    </div>
-  </body>
-</html>
+      <div class="grid">
+        <div class="field">
+          <label for="rule">Mangling rules</label>
+          <select id="rule" name="rule">
+            <option value="">None</option>
+            <option value="best64">best64</option>
+            <option value="toggles">toggles</option>
+            <option value="dive">dive</option>
+          </select>
+        </div>
+        <div class="field" style="display:flex; align-items:flex-end;">
+          <button id="submitBtn" type="submit" class="btn" style="width:100%;">Crack Hash</button>
+        </div>
+      </div>
+    </form>
+  </div>
+
+  <div id="status"><span class="spinner" id="spinner"></span><span id="statusText"></span></div>
+
+  <div id="resultsWrap" class="panel" style="display:none">
+    <table id="resultsTable">
+      <thead><tr><th>Hash</th><th>Type</th><th>Cracked</th><th>Via</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <div id="logWrap" class="panel" style="display:none">
+    <label>Live output</label>
+    <pre id="log"></pre>
+  </div>
+</div>
+
+<script>
+  (function () {
+    var form = document.getElementById("crackForm");
+    var btn = document.getElementById("submitBtn");
+    var statusText = document.getElementById("statusText");
+    var spinner = document.getElementById("spinner");
+    var logWrap = document.getElementById("logWrap");
+    var logEl = document.getElementById("log");
+    var resultsWrap = document.getElementById("resultsWrap");
+    var tbody = document.querySelector("#resultsTable tbody");
+    var clientError = document.getElementById("clientError");
+    var es = null;
+
+    function esc(s) {
+      return String(s == null ? "" : s).replace(/[&<>"]/g, function (c) {
+        return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c];
+      });
+    }
+    function setStatus(msg, busy) {
+      statusText.textContent = msg || "";
+      spinner.style.display = busy ? "inline-block" : "none";
+    }
+    function appendLog(line) { logEl.textContent += line + "\n"; logEl.scrollTop = logEl.scrollHeight; }
+    function renderResults(results) {
+      tbody.innerHTML = "";
+      results.forEach(function (r) {
+        var cracked = r.cracked
+          ? '<span class="badge ok">' + esc(r.cracked) + "</span>"
+          : '<span class="badge no">not found</span>';
+        var type = r.hash_type ? '<span class="tag">' + esc(r.hash_type) + "</span>" : "?";
+        tbody.innerHTML += "<tr><td>" + esc(r.line) + "</td><td>" + type +
+          "</td><td>" + cracked + "</td><td>" + esc(r.via || "") + "</td></tr>";
+      });
+      resultsWrap.style.display = "block";
+    }
+    function finish(msg) { btn.disabled = false; btn.textContent = "Crack Hash"; setStatus(msg, false); }
+
+    form.addEventListener("submit", function (e) {
+      e.preventDefault();
+      clientError.textContent = "";
+      if (es) { es.close(); es = null; }
+      tbody.innerHTML = ""; resultsWrap.style.display = "none";
+      logEl.textContent = ""; logWrap.style.display = "none";
+      btn.disabled = true; btn.textContent = "Submitting…"; setStatus("Submitting job…", true);
+
+      fetch("/crack_hash", { method: "POST", body: new FormData(form) })
+        .then(function (resp) {
+          if (resp.status === 429) throw new Error("Rate limited: max 5 requests/minute.");
+          return resp.json().then(function (data) {
+            if (!resp.ok) throw new Error(data.error || "Request failed");
+            return data;
+          });
+        })
+        .then(function (data) {
+          if (data.cached) { renderResults(data.results); finish("Returned from cache."); return; }
+          setStatus("Queued (job " + data.job_id + ")…", true);
+          logWrap.style.display = "block";
+          listen(data.job_id);
+        })
+        .catch(function (err) { clientError.textContent = err.message; finish(""); });
+    });
+
+    function loadFinal(jobId) {
+      fetch("/crack_status/" + jobId).then(function (r) { return r.json(); }).then(function (d) {
+        if (d.results) renderResults(d.results);
+        finish(d.status === "error" ? ("Error: " + (d.error || "failed")) : "Finished.");
+      });
+    }
+    function listen(jobId) {
+      setStatus("Running…", true);
+      es = new EventSource("/crack_progress/" + jobId);
+      es.onmessage = function (ev) { try { appendLog(JSON.parse(ev.data)); } catch (_) { appendLog(ev.data); } };
+      es.addEventListener("done", function () { es.close(); loadFinal(jobId); });
+      es.addEventListener("timeout", function () { es.close(); loadFinal(jobId); });
+      es.onerror = function () { if (es) { es.close(); es = null; } loadFinal(jobId); };
+    }
+  })();
+</script>
+{% include 'footer.html' %}

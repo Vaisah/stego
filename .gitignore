@@ -5,3 +5,4 @@ __pycache__/
 uploads/*
 mongo/data/*
 web/static/uploads/*
+.env
